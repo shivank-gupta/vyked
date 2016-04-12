@@ -63,8 +63,9 @@ class Host:
 
     @classmethod
     def _set_signal_handlers(cls):
-        asyncio.get_event_loop().add_signal_handler(getattr(signal, 'SIGINT'), partial(cls._stop, 'SIGINT'))
-        asyncio.get_event_loop().add_signal_handler(getattr(signal, 'SIGTERM'), partial(cls._stop, 'SIGTERM'))
+        if getattr(cls._http_service, '_not_flask', True):
+            asyncio.get_event_loop().add_signal_handler(getattr(signal, 'SIGINT'), partial(cls._stop, 'SIGINT'))
+            asyncio.get_event_loop().add_signal_handler(getattr(signal, 'SIGTERM'), partial(cls._stop, 'SIGTERM'))
 
     @classmethod
     def _create_tcp_server(cls):
@@ -79,23 +80,24 @@ class Host:
     @classmethod
     def _create_http_server(cls):
         if cls._http_service:
-            host_ip, host_port = cls._http_service.socket_address
-            ssl_context = cls._http_service.ssl_context
-            app = Application(loop=asyncio.get_event_loop())
-            fn = getattr(cls._http_service, 'pong')
-            app.router.add_route('GET', '/ping', fn)
-            app.router.add_route('GET', '/_stats', getattr(cls._http_service, 'stats'))
-            app.router.add_route('GET', '/_change_log_level/{level}', getattr(cls._http_service, 'handle_log_change'))
-            for each in cls._http_service.__ordered__:
-                fn = getattr(cls._http_service, each)
-                if callable(fn) and getattr(fn, 'is_http_method', False):
-                    for path in fn.paths:
-                        app.router.add_route(fn.method, path, fn)
-                        if cls._http_service.cross_domain_allowed:
-                            app.router.add_route('options', path, cls._http_service.preflight_response)
-            handler = app.make_handler(access_log=cls._logger)
-            task = asyncio.get_event_loop().create_server(handler, host_ip, host_port, ssl=ssl_context)
-            return asyncio.get_event_loop().run_until_complete(task)
+            if cls._http_service._not_flask:
+                host_ip, host_port = cls._http_service.socket_address
+                ssl_context = cls._http_service.ssl_context
+                app = Application(loop=asyncio.get_event_loop())
+                fn = getattr(cls._http_service, 'pong')
+                app.router.add_route('GET', '/ping', fn)
+                app.router.add_route('GET', '/_stats', getattr(cls._http_service, 'stats'))
+                app.router.add_route('GET', '/_change_log_level/{level}', getattr(cls._http_service, 'handle_log_change'))
+                for each in cls._http_service.__ordered__:
+                    fn = getattr(cls._http_service, each)
+                    if callable(fn) and getattr(fn, 'is_http_method', False):
+                        for path in fn.paths:
+                            app.router.add_route(fn.method, path, fn)
+                            if cls._http_service.cross_domain_allowed:
+                                app.router.add_route('options', path, cls._http_service.preflight_response)
+                handler = app.make_handler(access_log=cls._logger)
+                task = asyncio.get_event_loop().create_server(handler, host_ip, host_port, ssl=ssl_context)
+                return asyncio.get_event_loop().run_until_complete(task)
 
     @classmethod
     def _set_host_id(cls):
@@ -117,7 +119,8 @@ class Host:
         cls._logger.info("Event loop running forever, press CTRL+c to interrupt.")
         cls._logger.info("pid %s: send SIGINT or SIGTERM to exit." % os.getpid())
         try:
-            asyncio.get_event_loop().run_forever()
+            if getattr(cls._http_service, '_not_flask', True):
+                asyncio.get_event_loop().run_forever()
         except Exception as e:
             print(e)
         finally:
@@ -126,10 +129,11 @@ class Host:
                 asyncio.get_event_loop().run_until_complete(tcp_server.wait_closed())
 
             if http_server:
-                http_server.close()
-                asyncio.get_event_loop().run_until_complete(http_server.wait_closed())
-
-            asyncio.get_event_loop().close()
+                if getattr(cls._http_service, '_not_flask', True):
+                    http_server.close()
+                    asyncio.get_event_loop().run_until_complete(http_server.wait_closed())
+            if getattr(cls._http_service, '_not_flask', True):
+                asyncio.get_event_loop().close()
 
     @classmethod
     def _create_pubsub_handler(cls):

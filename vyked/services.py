@@ -233,6 +233,7 @@ class HTTPService(_ServiceHost, metaclass=OrderedClassMembers):
         self._ssl_context = ssl_context
         self._allow_cross_domain = allow_cross_domain
         self._preflight_response = preflight_response
+        self._not_flask = True
 
     @property
     def ssl_context(self):
