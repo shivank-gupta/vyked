@@ -10,6 +10,9 @@ from .packet import MessagePacket
 from .exceptions import RequestException, ClientException
 from .utils.ordered_class_member import OrderedClassMembers
 from .utils.stats import Aggregator
+import asyncio_redis as redis
+import psycopg2
+import requests
 
 
 class _Service:
@@ -228,11 +231,12 @@ def default_preflight_response(request):
 class HTTPService(_ServiceHost, metaclass=OrderedClassMembers):
     def __init__(self, service_name, service_version, host_ip=None, host_port=None, ssl_context=None,
                  allow_cross_domain=False,
-                 preflight_response=default_preflight_response):
+                 preflight_response=default_preflight_response, config=None):
         super(HTTPService, self).__init__(service_name, service_version, host_ip, host_port)
         self._ssl_context = ssl_context
         self._allow_cross_domain = allow_cross_domain
         self._preflight_response = preflight_response
+        self.config = config
 
     @property
     def ssl_context(self):
@@ -245,6 +249,7 @@ class HTTPService(_ServiceHost, metaclass=OrderedClassMembers):
     @property
     def preflight_response(self):
         return self._preflight_response
+
     @staticmethod
     def pong2(_):
         return Response()
@@ -274,6 +279,60 @@ class HTTPService(_ServiceHost, metaclass=OrderedClassMembers):
             handler.setLevel(level)
         response = 'Logging level updated'
         return Response(status=200, body=response.encode())
+
+    def health(self, request: Request):
+        MIN_HEALTH_VERSION = "2.0"
+        if self.config is not None:
+            # check db if db_key in config
+            db_config = self.config.get("POSTGRES_DB", None)
+            if db_config is not None:
+                conn_string = "dbname='%s' host='%s' user='%s' password='%s' port='%i'"\
+                    % (self.config['POSTGRES_DB'], self.config['POSTGRES_HOST'], self.config['POSTGRES_USER'],
+                        self.config['POSTGRES_PASS'], self.config['POSTGRES_PORT'])
+                connection = psycopg2.connect(conn_string)
+                try:
+                    cur = connection.cursor()
+                    cur.execute('SELECT 1')
+                except psycopg2.OperationalError:
+                    response = "Service Error: cannot connect to database"
+                    return Response(status=500, body=response.encode())
+                connection.close()
+
+            # check external api's
+            # TODO should be done through test cases, api can be get/post/put etc, just checking for get here
+            external_api_list = self.config.get("EXTERNAL_API", None)
+            if external_api_list is not None:
+                for api_url in external_api_list:
+                    # ping each url to see if 200 ok
+                    r = requests.get(api_url)
+                    if r.status_code != requests.codes.ok:
+                        response = "Service Error: cannot connect to api: %".format(api_url)
+                        return Response(status=500, body=response.encode())
+
+            # check redis if redis_key in config
+            # redis_config = self.config.get("REDIS_HOST", None)
+            # if redis_config is not None:
+            #     rs_conn = yield from redis.Connection.create(self.config['REDIS_HOST'], self.config['REDIS_PORT'], auto_reconnect=True)
+            #     try:
+            #         result = yield from rs_conn.set("Vyked_Test","test")  # set a test key
+            #     except (redis.exceptions.Error):
+            #         response["msg"] = "Service Error: cannot connect to redis server"
+            #         response["status"] = "error"
+            #         return Response(status=500, body=response.encode())
+            #     rs_conn.close()
+
+            response = 'Health check succeeded'
+            return Response(status=200, body=response.encode())
+
+        elif self._service_version > MIN_HEALTH_VERSION:
+            # config must be specified, stop service intiation
+            # return error
+            response = "Config file must be configured for Health Check"
+            return Response(status=500, body=response.encode())
+
+        else:
+            response = 'Health check skipped, please create config file'
+            return Response(status=200, body=response.encode())
 
 
 class HTTPServiceClient(_Service):

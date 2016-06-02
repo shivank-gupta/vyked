@@ -52,7 +52,9 @@ class StatUnit:
         if len(self.values) > self.MAXSIZE:
             self.values.pop(0)
 
-        self.average = sum(self.values) / len(self.values)
+        # self.average = sum(self.values) / len(self.values)
+        # running averages: ('previous mean' * '(count -1)') + 'new value') / 'count'
+        self.average = (self.average * self.count + val)/(self.count+1)
         self.count += 1
         if success:
             self.success_count += 1
@@ -63,6 +65,9 @@ class StatUnit:
         for k, v in self.sub.items():
             d['sub'][k] = v.to_dict()
         return d
+
+    def clear(self):
+        self.sub = {}
 
     def __str__(self):
         return "{} {} {} {}".format(self.key, self.sum, self.average, self.count)
@@ -100,10 +105,14 @@ class Aggregator:
 
     @classmethod
     def periodic_aggregated_stats_logger(cls):
+
         hostname = socket.gethostname()
         service_name = '_'.join(setproctitle.getproctitle().split('_')[:-1])
 
         logd = cls._stats.to_dict()
+        # reset averages and counts of previous window
+        cls._stats.clear()
+
         logs = []
         for server_type in ['http', 'tcp']:
             try:
