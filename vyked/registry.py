@@ -44,7 +44,7 @@ class Repository:
         service_entry = (service.host, service.port, service.node_id, service.type)
         self._registered_services[service.name][service.version].append(service_entry)
         self._pending_services[service_name].append(service.node_id)
-        self._uptimes[service_name][service.host] = {
+        self._uptimes[service_name][service.host][service.port] = {
             'uptime': int(time.time()),
             'node_id': service.node_id
         }
@@ -99,6 +99,7 @@ class Repository:
 
     def remove_node(self, node_id):
         thehost = None
+        theport = None
         for name, versions in self._registered_services.items():
             for version, instances in versions.items():
                 to_remove = []
@@ -106,6 +107,7 @@ class Repository:
                     host, port, node, service_type = instance
                     if node_id == node:
                         thehost = host
+                        theport = port
                         to_remove.append(instance)
                         try:
                             self.remove_pending_instance(name, version, node_id)
@@ -113,17 +115,16 @@ class Repository:
                             pass
                 for instance in to_remove:
                     instances.remove(instance)
-        for name, versions in self._subscribe_list.items():
-            for version, endpoints in versions.items():
-                for endpoint, subscribers in endpoints.items():
-                    to_remove = list(filter(lambda x: node_id == x[4], subscribers))
-                    for subscriber in to_remove:
-                        subscribers.remove(subscriber)
+        remove_from_uptimes = []
         for name, nodes in self._uptimes.items():
-            for host, uptimes in nodes.items():
-                if host == thehost and uptimes['node_id'] == node_id:
-                    uptimes['downtime'] = int(time.time())
-                    self.log_uptimes()
+            for host, portup in nodes.items():
+                for port, uptimes in portup.items():
+                    if host == thehost and port == theport and uptimes['node_id'] == node_id:
+                        uptimes['downtime'] = int(time.time())
+                        remove_from_uptimes.append((name, host, port))
+        for name, host, port in remove_from_uptimes:
+            self._uptimes[name][host].pop(port)
+        self.log_uptimes()
         return None
 
     def get_uptimes(self):
@@ -131,19 +132,31 @@ class Repository:
 
     def log_uptimes(self):
         for name, nodes in self._uptimes.items():
-            for host, d in nodes.items():
-                now = int(time.time())
-                live = d.get('downtime', 0) < d['uptime']
-                uptime = now - d['uptime'] if live else 0
-                logd = {'service_name': name.split('/')[0], 'hostname': host, 'status': live,
-                        'uptime': int(uptime)}
-                logging.getLogger('stats').info(logd)
+            for host, portup in nodes.items():
+                for port, d in portup.items():
+                    now = int(time.time())
+                    live = d.get('downtime', 0) < d['uptime']
+                    uptime = now - d['uptime'] if live else 0
+                    logd = {'service_name': name.split('/')[0], 'hostname': host, 'status': live,
+                            'uptime': int(uptime)}
+                    logging.getLogger('stats').info(logd)
 
     def xsubscribe(self, service, version, host, port, node_id, endpoints):
-        entry = (service, version, host, port, node_id)
+        entry = (service, version)
+        # Remove all entries of service, version from subscribe list
+        for name, versions in self._subscribe_list.items():
+            for version, endpoints2 in versions.items():
+                for endpoint, subscribers in endpoints2.items():
+                    to_remove = list(filter(lambda x: service == x[0] and version == x[1], 
+                        subscribers))
+                    for subscriber in to_remove:
+                        subscribers.remove(subscriber)
+
+        # Add entries of service, version into subscribe list - thus keeping 
+        # only the latest information
         for endpoint in endpoints:
             self._subscribe_list[endpoint['service']][endpoint['version']][endpoint['endpoint']].append(
-                entry + (endpoint['strategy'],))
+                entry)
 
     def get_subscribers(self, service, version, endpoint):
         return self._subscribe_list[service][version][endpoint]
@@ -224,7 +237,7 @@ class Registry:
             for_log["request_type"] = request_type
             self.logger.debug(for_log)
         if request_type == 'register':
-            self.register_service(packet, protocol)
+            self.register_service(packet, protocol, transport)
         elif request_type == 'get_instances':
             self.get_service_instances(packet, protocol)
         elif request_type == 'xsubscribe':
@@ -236,7 +249,7 @@ class Registry:
         elif request_type == 'ping':
             self._handle_ping(packet, protocol, transport)
         elif request_type == 'uptime_report':
-            self._get_uptime_report(packet, protocol)
+            self._get_uptime_report(protocol)
         elif request_type == 'change_log_level':
             self._handle_log_change(packet, protocol)
         # API for graceful_shutdown
@@ -270,8 +283,10 @@ class Registry:
                         for _, _, node_id, _ in self._repository.get_instances(consumer_name, consumer_version):
                             self._repository.add_pending_service(consumer_name, consumer_version, node_id)
 
-    def register_service(self, packet: dict, registry_protocol):
+    def register_service(self, packet: dict, registry_protocol, transport=None):
         params = packet['params']
+        if params['host'] == '0.0.0.0' and transport:
+            params['host'] = transport.get_extra_info("peername")[0]
         service = Service(params['service'], params['version'], params['dependencies'], params['host'], params['port'],
                           params['node_id'], params['type'])
         self._repository.register_service(service)
@@ -282,13 +297,13 @@ class Registry:
 
     def _inform_consumers(self, service: Service):
         consumers = self._repository.get_consumers(service.name, service.version)
-        for service_name, service_version, _ in consumers:
-            if not self._repository.is_pending(service_name, service_version):
-                instances = self._repository.get_instances(service_name, service_version)
-                for host, port, node, stype in instances:
-                    protocol = self._client_protocols[node]
-                    protocol.send(ControlPacket.new_instance(
-                        service.name, service.version, service.host, service.port, service.node_id, service.type))
+        for service_name, service_version, node in consumers:
+            # if not self._repository.is_pending(service_name, service_version):
+                # instances = self._repository.get_instances(service_name, service_version)
+                # for host, port, node, stype in instances:
+            protocol = self._client_protocols[node]
+            protocol.send(ControlPacket.new_instance(
+                service.name, service.version, service.host, service.port, service.node_id, service.type))
 
     def _send_activated_packet(self, service, version, node):
         protocol = self._client_protocols.get(node, None)
@@ -308,8 +323,8 @@ class Registry:
                     if not len(tcp_instances):
                         should_activate = False
                         break
+                self._send_activated_packet(service, version, node)
                 if should_activate:
-                    self._send_activated_packet(service, version, node)
                     self._repository.remove_pending_instance(service, version, node)
                     self.logger.info('%s activated', (service, version))
                 else:
@@ -387,7 +402,7 @@ class Registry:
         endpoints = params['events']
         self._repository.xsubscribe(service, version, host, port, node_id, endpoints)
 
-    def _get_uptime_report(self, packet, protocol):
+    def _get_uptime_report(self, protocol):
         uptimes = self._repository.get_uptimes()
         protocol.send(ControlPacket.uptime(uptimes))
 
@@ -460,7 +475,9 @@ class Registry:
                 return
             elif wtlist_port in self._blacklisted_hosts[wtlist_ip]:
                 self._blacklisted_hosts[wtlist_ip].remove(wtlist_port)
-                protocol.send("Whitelisted Services on " + str(wtlist_ip) + str(wtlist_port))
+                if not self._blacklisted_hosts[wtlist_ip]:
+                    self._blacklisted_hosts.pop(wtlist_ip, None)
+                protocol.send("Whitelisted Services on " + str(wtlist_ip) + ":" + str(wtlist_port))
             else:
                 self._blacklisted_hosts.pop(wtlist_ip, None)
                 protocol.send("Whitelisted Services on " + str(wtlist_ip))
@@ -474,7 +491,7 @@ class Registry:
                        'Pending Services': self._repository._pending_services,
                        'XSubscription List': self._repository._subscribe_list,
                        'Service Dependencies': self._repository._service_dependencies}
-        protocol.send(json.dumps(status_dict))
+        protocol.send(status_dict)
 
 if __name__ == '__main__':
     # config_logs(enable_ping_logs=False, log_level=logging.DEBUG)

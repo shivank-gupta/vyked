@@ -16,7 +16,7 @@ from .packet import ControlPacket
 from .protocol_factory import get_vyked_protocol
 from .utils.jsonencoder import VykedEncoder
 from .exceptions import ClientNotFoundError
-from .utils.client_stats import ClientStats
+
 
 HTTP = 'http'
 TCP = 'tcp'
@@ -76,7 +76,7 @@ class TCPBus:
         futures = []
         for sc in self._service_clients:
             for host, port, node_id, service_type in self._registry_client.get_all_addresses(*sc.properties):
-                if service_type == 'tcp':
+                if service_type == 'tcp' and node_id not in self._node_clients.keys():
                     self._node_clients[node_id] = sc
                     future = self._connect_to_client(host, node_id, port, service_type, sc)
                     futures.append(future)
@@ -97,7 +97,7 @@ class TCPBus:
 
     def new_instance(self, service, version, host, port, node_id, type):
         sc = next(sc for sc in self._service_clients if sc.name == service and sc.version == version)
-        if type == 'tcp':
+        if type == 'tcp' and node_id not in self._node_clients.keys():
             self._node_clients[node_id] = sc
             asyncio.async(self._connect_to_client(host, node_id, port, type, sc))
 
@@ -113,14 +113,15 @@ class TCPBus:
         """
         node = self._get_node_id_for_packet(packet)
         node_id = node[2]
-        client_protocol = self._client_protocols.get(node_id)[0]
-        client_host = self._client_protocols.get(node_id)[1]
+        try:
+            client_protocol = self._client_protocols.get(node_id)
+        except TypeError:
+            client_protocol = None
 
         if node_id and client_protocol:
             if client_protocol.is_connected():
                 packet['to'] = node_id
                 client_protocol.send(packet)
-                ClientStats.update(packet['service'], client_host)
 
             else:
                 self._client_protocols.pop(node_id)
@@ -140,7 +141,7 @@ class TCPBus:
 
         _, protocol = yield from asyncio.get_event_loop().create_connection(partial(get_vyked_protocol, service_client),
                                                                             host, port, ssl=service_client._ssl_context)
-        self._client_protocols[node_id] = (protocol, host)
+        self._client_protocols[node_id] = protocol
 
     @staticmethod
     def _create_json_service_name(app, service, version):
@@ -177,6 +178,8 @@ class TCPBus:
             self._handle_log_change(packet, protocol)
         elif packet['type'] == 'get_tasks':
             protocol.send(len(list(asyncio.Task.all_tasks())))
+        elif packet['type'] == 'get_queues':
+            protocol.send(str([(x._service_name, len(x._pending_requests.keys())) for x in self._service_clients]))
         else:
             if self.tcp_host.is_for_me(packet['service'], packet['version']):
                 func = getattr(self, '_' + packet['type'] + '_receiver')
@@ -237,22 +240,24 @@ class PubSubBus:
         self._pubsub_handler = PubSub(host, port)
         yield from self._pubsub_handler.connect()
 
-    def register_for_subscription(self, host, port, node_id, clients):
+    def register_for_subscription(self, host, port, node_id, clients, service):
         self._clients = clients
+        self._service = service
         subs_list = []
         xsubs_list4registry = []
         xsubs_list4redis = []
         for client in filter(lambda x: isinstance(x, TCPServiceClient), clients):
+            client._pubsub_bus = self
             for each in dir(client):
                 fn = getattr(client, each)
                 if getattr(fn, 'is_subscribe', False):
                     subs_list.append(self._get_pubsub_key(client.name, client.version, fn.__name__))
                 elif getattr(fn, 'is_xsubscribe', False):
                     xsubs_list4registry.append((client.name, client.version, fn.__name__, getattr(fn, 'strategy')))
-                    xsubs_list4redis.append(self._get_pubsub_key(client.name, client.version, fn.__name__,
-                                                                 node_id=node_id))
+                    xsubs_list4redis.append('/'.join((client.name, client.version, fn.__name__, service.name, service.version)))
+        asyncio.async(self.message_queue_popper(xsubs_list4redis))
         self._registry_client.x_subscribe(host, port, node_id, xsubs_list4registry)
-        yield from self._pubsub_handler.subscribe(subs_list + xsubs_list4redis, handler=self.subscription_handler)
+        yield from self._pubsub_handler.subscribe(subs_list, handler=self.subscription_handler)
 
     def publish(self, service, version, endpoint, payload):
         endpoint_key = self._get_pubsub_key(service, version, endpoint)
@@ -261,31 +266,21 @@ class PubSubBus:
 
     def xpublish(self, service, version, endpoint, payload):
         subscribers = yield from self._registry_client.get_subscribers(service, version, endpoint)
-        strategies = defaultdict(list)
+        strategies = []
         for subscriber in subscribers:
-            strategies[(subscriber['service'], subscriber['version'])].append(
-                (subscriber['host'], subscriber['port'], subscriber['node_id'], subscriber['strategy']))
-        for key, value in strategies.items():
-            if value[0][3] == 'LEADER':
-                node_id = value[0][2]
-            else:
-                random_metadata = random.choice(value)
-                node_id = random_metadata[2]
-            node_ids = [subscriber[2] for subscriber in value]
-            shuffle(node_ids)
-            node_ids.insert(0, node_ids.pop(node_ids.index(node_id)))
-            asyncio.async(self.retry_xpublish(payload, service, version, endpoint, node_ids))
-
-    def retry_xpublish(self, payload, service, version, endpoint, node_ids):
-        for node_id in node_ids:
-            if (yield from self.publish_to_redis(payload, service, version, endpoint, node_id))==1:
-                break
+            strategies.append((subscriber['service'], subscriber['version']))
+        for element in strategies:
+            asyncio.async(self._pubsub_handler.add_to_queue('/'.join((service, version, endpoint, element[0], element[1])), 
+                json.dumps(payload, cls=VykedEncoder)))
 
     @asyncio.coroutine
     def publish_to_redis(self, payload, service, version, endpoint, node_id):
         endpoint_key = self._get_pubsub_key(service, version, endpoint, node_id=node_id)
         result = yield from self._pubsub_handler.publish(endpoint_key, json.dumps(payload, cls=VykedEncoder))
         return result
+
+    def enqueue(self, endpoint, payload):
+        asyncio.async(self._pubsub_handler.add_to_queue(str(endpoint), json.dumps(payload, cls=VykedEncoder)))
 
     def subscription_handler(self, endpoint, payload):
         elements = endpoint.split('/')
@@ -306,3 +301,36 @@ class PubSubBus:
         if node_id:
             return '/'.join((service, str(version), endpoint, node_id))
         return '/'.join((service, str(version), endpoint))
+
+    def task_queue_handler(self, queue_name, payload, blocking=False):
+        if '/' in queue_name:
+            service, version, endpoint, _, _ = queue_name.split('/')
+            client = [sc for sc in self._clients if (sc.name == service and sc.version == version)][0]
+            func = getattr(client, endpoint, None)
+        else:
+            for each in dir(self._service):
+                fn = getattr(self._service, each)
+                if getattr(fn, 'queue_name', '') == queue_name and getattr(fn, 'is_task_queue', False):
+                    func = fn
+                    break
+        if func:
+            if blocking:
+                yield from func(**json.loads(payload))
+            elif getattr(func, 'blocking', False):
+                yield from func(json.loads(payload))
+            else:
+                asyncio.async(func(json.loads(payload)))
+
+    def message_queue_popper(self, endpoints):
+        if endpoints:
+            yield from self._pubsub_handler.task_getter(endpoints, self.task_queue_handler)
+
+    def register_for_task_queues(self, service):
+        endpoints = []
+        for each in dir(service):
+            fn = getattr(service, each)
+            if getattr(fn, 'is_task_queue', False):
+                if fn.queue_name not in endpoints:
+                    endpoints.append(fn.queue_name)
+        if len(endpoints):
+            yield from self._pubsub_handler.task_getter(endpoints, self.task_queue_handler, blocking=True)

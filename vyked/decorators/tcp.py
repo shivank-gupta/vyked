@@ -10,16 +10,17 @@ import setproctitle
 import time
 
 
-def publish(func):
+def publish(func=None, blocking=False):
     """
     publish the return value of this function as a message from this endpoint
     """
-
+    if func is None:
+        return partial(publish, blocking=blocking)
     @wraps(func)
     def wrapper(self, *args, **kwargs):  # outgoing
         payload = func(self, *args, **kwargs)
         payload.pop('self', None)
-        self._publish(func.__name__, payload)
+        self._publish(func.__name__, payload, blocking=blocking)
         return None
 
     wrapper.is_publish = True
@@ -37,7 +38,7 @@ def subscribe(func):
     return wrapper
 
 
-def xsubscribe(func=None, strategy='DESIGNATION'):
+def xsubscribe(func=None, strategy='DESIGNATION', blocking=False):
     """
     Used to listen for publications from a specific endpoint of a service. If multiple instances
     subscribe to an endpoint, only one of them receives the event. And the publish event is retried till
@@ -48,11 +49,12 @@ def xsubscribe(func=None, strategy='DESIGNATION'):
     which registered for that endpoint.
     """
     if func is None:
-        return partial(xsubscribe, strategy=strategy)
+        return partial(xsubscribe, strategy=strategy, blocking=blocking)
     else:
         wrapper = _get_subscribe_decorator(func)
         wrapper.is_xsubscribe = True
         wrapper.strategy = strategy
+        wrapper.blocking = blocking
         return wrapper
 
 
@@ -114,6 +116,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None):
     def wrapper(*args, **kwargs):
         _logger = logging.getLogger(__name__)
         start_time = int(time.time() * 1000)
+        start_process_time = int(time.process_time() * 1000)
         self = args[0]
         rid = kwargs.pop('request_id')
         entity = kwargs.pop('entity')
@@ -163,6 +166,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None):
             Stats.tcp_stats['total_responses'] += 1
 
         end_time = int(time.time() * 1000)
+        end_process_time = int(time.process_time() * 1000)
 
         hostname = socket.gethostname()
         service_name = '_'.join(setproctitle.getproctitle().split('_')[:-1])
@@ -177,15 +181,44 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None):
 
         # call to update aggregator, designed to replace the stats module.
         Aggregator.update_stats(endpoint=func.__name__, status=status, success=success,
-                                server_type='tcp', time_taken=end_time - start_time)
+                                server_type='tcp', time_taken=end_time - start_time,
+                                process_time_taken=end_process_time - start_process_time)
 
         if not old_api:
             return self._make_response_packet(request_id=rid, from_id=from_id, entity=entity, result=result,
-                                              error=error, failed=failed)
+                                              error=error, failed=failed, method=func.__name__,
+                                              service_name=self.name)
         else:
             return self._make_response_packet(request_id=rid, from_id=from_id, entity=entity, result=result,
                                               error=error, failed=failed, old_api=old_api,
-                                              replacement_api=replacement_api)
+                                              replacement_api=replacement_api, method=func.__name__,
+                                              service_name=self.name)
 
     wrapper.is_api = True
+    return wrapper
+
+
+def task_queue(func=None, queue_name=None):
+    if func is None:
+        return partial(task_queue, queue_name=queue_name)
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        coroutine_func = func
+        if not asyncio.iscoroutine(func):
+            coroutine_func = asyncio.coroutine(func)
+        return (yield from coroutine_func(*args, **kwargs))
+    wrapper.queue_name = queue_name
+    wrapper.is_task_queue = True
+    return wrapper
+
+
+def enqueue(func=None, queue_name=None):
+    if func is None:
+        return partial(enqueue, queue_name=queue_name)
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):  # outgoing
+        payload = func(self, *args, **kwargs)
+        payload.pop('self', None)
+        self._enqueue(queue_name, payload)
+        return None
     return wrapper
