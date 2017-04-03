@@ -14,7 +14,6 @@ class JSONProtocol(asyncio.Protocol):
         self._send_q = None
         self._connected = False
         self._transport = None
-        self._obj_streamer = None
         self._pending_data = []
         self._partial_data = ""
 
@@ -39,13 +38,7 @@ class JSONProtocol(asyncio.Protocol):
         self._transport.send = self._transport.write
         self._send_q = SendQueue(transport, self.is_connected)
 
-        self.set_streamer()
         self._send_q.send()
-
-    def set_streamer(self):
-        self._obj_streamer = ObjectStreamer()
-        self._obj_streamer.auto_listen(self, prefix='on_')
-        self._obj_streamer.consume('[')
 
     def connection_lost(self, exc):
         self._connected = False
@@ -56,51 +49,22 @@ class JSONProtocol(asyncio.Protocol):
         self._send_q.send(frame)
         self.logger.debug('Data sent: %s', frame.decode())
 
-    def close(self):
-        self._transport.write(']'.encode())  # end the json array
-        self._transport.close()
-
     def data_received(self, byte_data):
         string_data = byte_data.decode()
         self.logger.debug('Data received: %s', string_data)
         try:
-            pass
-            try:
-                string_data = self._partial_data + string_data
-                self._partial_data = ''
-                for e in string_data.split('!<^>!'):
-                    if e:
-                        try:
-                            element = json.loads(e)
-                            self.on_element(element)
-                        except Exception as exc:
-                            self._partial_data = e
-                            self.logger.debug('Packet splitting: %s', self._partial_data)
-            except Exception as e:
-                self.logger.error('Could not parse data: %s', string_data)
-            # self._obj_streamer.consume(string_data)
-        except:
-            # recover from invalid data
-            self.logger.exception('Invalid data received')
-            self.set_streamer()
-
-    def on_object_stream_start(self):
-        raise RuntimeError('Incorrect JSON Streaming Format: expect a JSON Array to start at root, got object')
-
-    def on_object_stream_end(self):
-        del self._obj_streamer
-        raise RuntimeError('Incorrect JSON Streaming Format: expect a JSON Array to end at root, got object')
-
-    def on_array_stream_start(self):
-        self.logger.debug('Array Stream started')
-
-    def on_array_stream_end(self):
-        del self._obj_streamer
-        self.logger.debug('Array Stream ended')
-
-    def on_pair(self, pair):
-        self.logger.debug('Pair {}'.format(pair))
-        raise RuntimeError('Received a key-value pair object - expected elements only')
+            string_data = self._partial_data + string_data
+            self._partial_data = ''
+            for e in string_data.split('!<^>!'):
+                if e:
+                    try:
+                        element = json.loads(e)
+                        self.on_element(element)
+                    except Exception as exc:
+                        self._partial_data = e
+                        self.logger.debug('Packet splitting: %s', self._partial_data)
+        except Exception as e:
+            self.logger.error('Could not parse data: %s', string_data)
 
 
 class VykedProtocol(JSONProtocol):
