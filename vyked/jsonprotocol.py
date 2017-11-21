@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-
+import time
 from jsonstreamer import ObjectStreamer
 from .sendqueue import SendQueue
 from .utils.jsonencoder import VykedEncoder
@@ -21,7 +21,10 @@ class JSONProtocol(asyncio.Protocol):
     @staticmethod
     def _make_frame(packet):
         string = json.dumps(packet, cls=VykedEncoder) + '!<^>!'
-        return string.encode()
+        string = string.encode()
+        if packet['type'] in ['request', 'response']:
+            logging.info('{} Packet Size in Bytes: {} Endpoint Method: {}'.format(packet['type'].capitalize(), len(string), packet['endpoint']))
+        return string
 
     def is_connected(self):
         return self._connected
@@ -61,8 +64,11 @@ class JSONProtocol(asyncio.Protocol):
         self._transport.close()
 
     def data_received(self, byte_data):
+        start_time = time.time()
         string_data = byte_data.decode()
         self.logger.debug('Data received: %s', string_data)
+        json_parse = False
+
         try:
             pass
             try:
@@ -73,6 +79,7 @@ class JSONProtocol(asyncio.Protocol):
                         try:
                             element = json.loads(partial_data + e)
                             partial_data = ''
+                            json_parse = True
                             self.on_element(element)
                         except Exception as exc:
                             partial_data += e
@@ -85,6 +92,9 @@ class JSONProtocol(asyncio.Protocol):
             # recover from invalid data
             self.logger.exception('Invalid data received')
             self.set_streamer()
+        
+        if json_parse and element['type'] in ['request', 'response']:
+            self.logger.info(" {} Packet Endpoint: {}  Json Loads Time: {} mili seconds ---".format(element['type'], element['endpoint'], (time.time() - start_time) * 1000))
 
     def on_object_stream_start(self):
         raise RuntimeError('Incorrect JSON Streaming Format: expect a JSON Array to start at root, got object')
