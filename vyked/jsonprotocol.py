@@ -5,7 +5,13 @@ import time
 from jsonstreamer import ObjectStreamer
 from .sendqueue import SendQueue
 from .utils.jsonencoder import VykedEncoder
+from .utils.common_utils import json_file_to_dict
 
+config = json_file_to_dict('config.json')
+_VALID_MAXIMUM_PACKET_SIZE_IN_BYTES = 1000000
+
+if isinstance(config, dict) and 'VALID_MAXIMUM_PACKET_SIZE_IN_BYTES' in config and isinstance(config['VALID_MAXIMUM_PACKET_SIZE_IN_BYTES'], int):
+    _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES = config['VALID_MAXIMUM_PACKET_SIZE_IN_BYTES']
 
 class JSONProtocol(asyncio.Protocol):
     logger = logging.getLogger(__name__)
@@ -22,8 +28,12 @@ class JSONProtocol(asyncio.Protocol):
     def _make_frame(packet):
         string = json.dumps(packet, cls=VykedEncoder) + '!<^>!'
         string = string.encode()
+        
         if packet['type'] in ['request', 'response']:
-            logging.info('{} Packet Size in Bytes: {} Endpoint Method: {}'.format(packet['type'].capitalize(), len(string), packet['endpoint']))
+            packet_length = len(string)
+            if packet_length >= _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES:
+                logging.info('{} Packet Size in Bytes: {} Endpoint Method: {}'.format(packet['type'].capitalize(), packet_length, packet['endpoint']))
+        
         return string
 
     def is_connected(self):
@@ -94,7 +104,7 @@ class JSONProtocol(asyncio.Protocol):
             self.set_streamer()
         
         if json_parse and element['type'] in ['request', 'response']:
-            self.logger.info(" {} Packet Endpoint: {}  Json Loads Time: {} mili seconds ---".format(element['type'], element['endpoint'], (time.time() - start_time) * 1000))
+            self.logger.debug("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'], element['endpoint'], (time.time() - start_time) * 1000))
 
     def on_object_stream_start(self):
         raise RuntimeError('Incorrect JSON Streaming Format: expect a JSON Array to start at root, got object')
