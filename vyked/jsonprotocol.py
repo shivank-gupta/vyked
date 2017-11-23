@@ -119,7 +119,7 @@ class JSONProtocol(asyncio.Protocol):
             self.logger.exception('Invalid data received')
             self.set_streamer()
         
-        if json_parse and element['type'] in ['request', 'response'] and json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS:
+        if json_parse and json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS and element['type'] in ['request', 'response']:
             self.logger.error("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'], element['endpoint'], json_loads_time))
 
     def on_object_stream_start(self):
