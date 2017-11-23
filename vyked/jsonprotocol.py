@@ -9,9 +9,14 @@ from .utils.common_utils import json_file_to_dict
 
 config = json_file_to_dict('config.json')
 _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES = 1000000
+_VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS = 500
 
-if isinstance(config, dict) and 'VALID_MAXIMUM_PACKET_SIZE_IN_BYTES' in config and isinstance(config['VALID_MAXIMUM_PACKET_SIZE_IN_BYTES'], int):
-    _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES = config['VALID_MAXIMUM_PACKET_SIZE_IN_BYTES']
+if isinstance(config, dict):
+    if 'VALID_MAXIMUM_PACKET_SIZE_IN_BYTES' in config and isinstance(config['VALID_MAXIMUM_PACKET_SIZE_IN_BYTES'], int):
+        _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES = config['VALID_MAXIMUM_PACKET_SIZE_IN_BYTES']
+    
+    if 'VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS' in config and isinstance(config['VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS'], int):
+        _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS = config['VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS']
 
 class JSONProtocol(asyncio.Protocol):
     logger = logging.getLogger(__name__)
@@ -23,6 +28,7 @@ class JSONProtocol(asyncio.Protocol):
         self._obj_streamer = None
         self._pending_data = []
         self._partial_data = ""
+        self._json_loads_time = 0.0
 
     @staticmethod
     def _make_frame(packet):
@@ -32,7 +38,7 @@ class JSONProtocol(asyncio.Protocol):
         if packet['type'] in ['request', 'response']:
             packet_length = len(string)
             if packet_length >= _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES:
-                logging.info('{} Packet Size in Bytes: {} Endpoint Method: {}'.format(packet['type'].capitalize(), packet_length, packet['endpoint']))
+                logging.error('{} Packet Size in Bytes: {} Endpoint Method: {}'.format(packet['type'].capitalize(), packet_length, packet['endpoint']))
         
         return string
 
@@ -74,7 +80,6 @@ class JSONProtocol(asyncio.Protocol):
         self._transport.close()
 
     def data_received(self, byte_data):
-        start_time = time.time()
         string_data = byte_data.decode()
         self.logger.debug('Data received: %s', string_data)
         json_parse = False
@@ -84,9 +89,12 @@ class JSONProtocol(asyncio.Protocol):
             try:
                 string_data = self._partial_data + string_data
                 partial_data = ''
+                json_loads_time = self._json_loads_time
+
                 for e in string_data.split('!<^>!'):
                     if e:
                         try:
+                            start_time = time.time()
                             element = json.loads(partial_data + e)
                             partial_data = ''
                             json_parse = True
@@ -94,7 +102,15 @@ class JSONProtocol(asyncio.Protocol):
                         except Exception as exc:
                             partial_data += e
                             self.logger.debug('Packet splitting: %s', self._partial_data)
+
+                    json_loads_time += ((time.time() - start_time) * 1000)
+
                 self._partial_data = partial_data
+                if json_parse:
+                    self._json_loads_time = 0.0
+                else:
+                    self._json_loads_time = json_loads_time
+
             except Exception as e:
                 self.logger.error('Could not parse data: %s', string_data)
             # self._obj_streamer.consume(string_data)
@@ -103,8 +119,8 @@ class JSONProtocol(asyncio.Protocol):
             self.logger.exception('Invalid data received')
             self.set_streamer()
         
-        if json_parse and element['type'] in ['request', 'response']:
-            self.logger.debug("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'], element['endpoint'], (time.time() - start_time) * 1000))
+        if json_parse and element['type'] in ['request', 'response'] and json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS:
+            self.logger.error("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'], element['endpoint'], json_loads_time))
 
     def on_object_stream_start(self):
         raise RuntimeError('Incorrect JSON Streaming Format: expect a JSON Array to start at root, got object')
