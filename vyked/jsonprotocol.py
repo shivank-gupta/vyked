@@ -82,7 +82,6 @@ class JSONProtocol(asyncio.Protocol):
     def data_received(self, byte_data):
         string_data = byte_data.decode()
         self.logger.debug('Data received: %s', string_data)
-        json_parse = False
 
         try:
             pass
@@ -96,31 +95,28 @@ class JSONProtocol(asyncio.Protocol):
                         try:
                             start_time = time.time()
                             element = json.loads(partial_data + e)
+                            json_loads_time += ((time.time() - start_time) * 1000)
+                            self._json_loads_time = 0.0
                             partial_data = ''
-                            json_parse = True
                             self.on_element(element)
+
+                            if json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS and element['type'] in ['request', 'response']:
+                                self.logger.error("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'].capitalize(), element['endpoint'], json_loads_time))
+
+                            json_loads_time = 0.0
                         except Exception as exc:
+                            json_loads_time += ((time.time() - start_time) * 1000)
+                            self_json_loads_time = json_loads_time
                             partial_data += e
                             self.logger.debug('Packet splitting: %s', self._partial_data)
 
-                    json_loads_time += ((time.time() - start_time) * 1000)
-
                 self._partial_data = partial_data
-                if json_parse:
-                    self._json_loads_time = 0.0
-                else:
-                    self._json_loads_time = json_loads_time
-
             except Exception as e:
                 self.logger.error('Could not parse data: %s', string_data)
-            # self._obj_streamer.consume(string_data)
         except:
             # recover from invalid data
             self.logger.exception('Invalid data received')
-            self.set_streamer()
-        
-        if json_parse and json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS and element['type'] in ['request', 'response']:
-            self.logger.error("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'].capitalize(), element['endpoint'], json_loads_time))
+            self.set_streamer() 
 
     def on_object_stream_start(self):
         raise RuntimeError('Incorrect JSON Streaming Format: expect a JSON Array to start at root, got object')
