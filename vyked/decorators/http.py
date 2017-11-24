@@ -49,22 +49,20 @@ def get_decorated_fun(method, path, required_params, timeout):
                                                 server_type='http', time_taken=0, process_time_taken=0)
                         return Response(status=400, content_type='application/json', body=json.dumps(res_d).encode())
 
-
-                _logger = logging.getLogger()
                 # Support for multi request body encodings
                 req = args[0]
                 try:
-                    content_type = req.content_type
-                    _logger.debug('Content-Type %s for API - %s', content_type, path)
-                    if str(content_type) in ['application/json']:
-                        req.post = req.json
+                    yield from req.json()
                 except:
                     pass
+                else:
+                    req.post = req.json
 
                 t1 = time.time()
                 tp1 = time.process_time()
                 wrapped_func = func
                 success = True
+                _logger = logging.getLogger()
                 api_timeout = _http_timeout
 
                 if valid_timeout(timeout):
