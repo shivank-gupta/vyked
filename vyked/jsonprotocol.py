@@ -84,13 +84,16 @@ class JSONProtocol(asyncio.Protocol):
         self.logger.debug('Data received: %s', string_data)
 
         try:
-            pass
-            try:
-                string_data = self._partial_data + string_data
-                partial_data = ''
-                json_loads_time = self._json_loads_time
-
-                for e in string_data.split('!<^>!'):
+            string_data = self._partial_data + string_data
+            partial_data = ''
+            json_loads_time = self._json_loads_time
+            split_array = string_data.split('!<^>!')
+                
+            # Condition succeed when there is no delimiter in the string so no json.loads required
+            if len(split_array) == 1:
+                self._partial_data = string_data
+            else:
+                for e in split_array:
                     if e:
                         try:
                             start_time = time.time()
@@ -111,10 +114,9 @@ class JSONProtocol(asyncio.Protocol):
                             self.logger.debug('Packet splitting: %s', self._partial_data)
 
                 self._partial_data = partial_data
-            except Exception as e:
-                self.logger.error('Could not parse data: %s', string_data)
         except:
             # recover from invalid data
+            self.logger.error('Could not parse data: %s', string_data)
             self.logger.exception('Invalid data received')
             self.set_streamer() 
 
