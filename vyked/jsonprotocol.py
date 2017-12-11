@@ -109,7 +109,7 @@ class JSONProtocol(asyncio.Protocol):
                             json_loads_time = 0.0
                         except Exception as exc:
                             json_loads_time += ((time.time() - start_time) * 1000)
-                            self_json_loads_time = json_loads_time
+                            self._json_loads_time = json_loads_time
                             partial_data += e
                             self.logger.debug('Packet splitting: %s', self._partial_data)
 
