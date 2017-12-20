@@ -506,24 +506,29 @@ class Registry:
         protocol.send(status_dict)
 
 class HTTPClient:
-    def __init__(self, host, port):
+    def __init__(self, host, port, repo):
         self._host = host
         self._port = port
         self.app = web.Application()
         self.handler = self.app.make_handler()
         self.setup_routes(self.app)
+        self._repo = repo
 
     def setup_routes(self, app):
         self.app.router.add_route('GET', '/', self.get_instances)
 
     @asyncio.coroutine
-    def get_instances(request):
-        return web.Response(text='Hello Aiohttp!')
+    def get_instances(self, request):
+        # session = await get_session(request)
+        service_name = request.GET['service']
+        version = request.GET['version']
+        data = self._repo.get_instances(service_name, version)
+        return web.Response(text='Hello Aiohttp!' + str(data))
 
-    def set_server(self):
+    def create_server(self):
         task = asyncio.get_event_loop().create_server(self.handler, self._host, self._port)
         asyncio.get_event_loop().run_until_complete(task)
-        asyncio.get_event_loop().run_forever()
+        # asyncio.get_event_loop().run_forever()
 
 
 if __name__ == '__main__':
@@ -533,11 +538,14 @@ if __name__ == '__main__':
     setproctitle("registry")
     REGISTRY_HOST = None
     REGISTRY_PORT = 4500
-    registry = Registry(REGISTRY_HOST, REGISTRY_PORT, Repository())
-    registry.periodic_uptime_logger()
-    registry.start()
-
     HTTP_PORT = 4501
     HTTP_HOST = '127.0.0.1'
-    http_client = HTTPClient(REGISTRY_HOST, HTTP_PORT)
-    http_client.set_server()
+    repo = Repository()
+    registry = Registry(REGISTRY_HOST, REGISTRY_PORT, repo)
+    registry.periodic_uptime_logger()
+
+    http_client = HTTPClient(HTTP_HOST, HTTP_PORT, repo)
+    http_client.create_server()
+
+    registry.start()
+
