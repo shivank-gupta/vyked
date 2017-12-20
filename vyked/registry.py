@@ -3,6 +3,7 @@ import signal
 import asyncio
 from functools import partial
 from collections import defaultdict, namedtuple
+from aiohttp import web
 import time
 import json
 import ssl
@@ -264,6 +265,10 @@ class Registry:
         elif request_type == 'show_current_state':
             self._show_current_state(protocol)
 
+    # @asyncio.coroutine
+    # def http(request):
+    #     return web.Response(text='Hello Aiohttp!')
+
     def deregister_service(self, host, port, node_id):
         service = self._repository.get_node(node_id)
         self._tcp_pingers.pop(node_id, None)
@@ -500,6 +505,27 @@ class Registry:
                        'Service Dependencies': self._repository._service_dependencies}
         protocol.send(status_dict)
 
+class HTTPClient:
+    def __init__(self, host, port):
+        self._host = host
+        self._port = port
+        self.app = web.Application()
+        self.handler = self.app.make_handler()
+        self.setup_routes(self.app)
+
+    def setup_routes(self, app):
+        self.app.router.add_route('GET', '/', self.get_instances)
+
+    @asyncio.coroutine
+    def get_instances(request):
+        return web.Response(text='Hello Aiohttp!')
+
+    def set_server(self):
+        task = asyncio.get_event_loop().create_server(self.handler, self._host, self._port)
+        asyncio.get_event_loop().run_until_complete(task)
+        asyncio.get_event_loop().run_forever()
+
+
 if __name__ == '__main__':
     # config_logs(enable_ping_logs=False, log_level=logging.DEBUG)
     from setproctitle import setproctitle
@@ -510,3 +536,8 @@ if __name__ == '__main__':
     registry = Registry(REGISTRY_HOST, REGISTRY_PORT, Repository())
     registry.periodic_uptime_logger()
     registry.start()
+
+    HTTP_PORT = 4501
+    HTTP_HOST = '127.0.0.1'
+    http_client = HTTPClient(REGISTRY_HOST, HTTP_PORT)
+    http_client.set_server()
