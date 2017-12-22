@@ -506,6 +506,10 @@ class Registry:
         protocol.send(status_dict)
 
 class HTTPClient:
+    """
+    Creating HTTP endpoint for registry with intend of using registry for other framework's
+    We should be able to use multiple framework with the help of registry
+    """
     def __init__(self, host, port, repo):
         self._host = host
         self._port = port
@@ -517,18 +521,46 @@ class HTTPClient:
     def setup_routes(self, app):
         self.app.router.add_route('GET', '/', self.get_instances)
 
+    def validator(self, request, params:list):
+        for param in params:
+            if not request.GET.get(param):
+                return False, param
+
     @asyncio.coroutine
     def get_instances(self, request):
         # session = await get_session(request)
+
         service_name = request.GET['service']
         version = request.GET['version']
         data = self._repo.get_instances(service_name, version)
         return web.Response(text='Hello Aiohttp!' + str(data))
 
+    @asyncio.coroutine
+    def make_service_request(self, request):
+        """
+        :param request:
+        :return:
+        """
+        params = ['service_name', 'version', 'request_type', 'params']
+        pass
+
+    @asyncio.coroutine
+    def registor_service(self, request):
+        pass
+
+    def locking(self):
+        pass
+
+    def monitoring(self):
+        """
+        logic which could de-register, report, restart or scale a service
+        :return:
+        """
+        pass
+
     def create_server(self):
         task = asyncio.get_event_loop().create_server(self.handler, self._host, self._port)
         asyncio.get_event_loop().run_until_complete(task)
-        # asyncio.get_event_loop().run_forever()
 
 
 if __name__ == '__main__':
@@ -548,4 +580,5 @@ if __name__ == '__main__':
     http_client.create_server()
 
     registry.start()
+
 
