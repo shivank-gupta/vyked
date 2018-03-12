@@ -223,6 +223,18 @@ class TCPService(_ServiceHost):
     def _xpublish(self, endpoint, payload, strategy):
         self._pubsub_bus.xpublish(self.name, self.version, endpoint, payload, strategy)
 
+    def _make_tcp_call(self, request: Request):
+        endpoint = request.match_info.get('function_name')
+        packet = yield from request.json()
+        api_fn = getattr(self.tcp_bus.tcp_host, endpoint)
+        if api_fn.is_api:
+            from_node_id = None
+            entity = None
+            tcp_res = yield from api_fn(from_id=from_node_id, entity=entity, **packet)
+            return Response(status=200, content_type='application/json', body=json.dumps(tcp_res).encode())
+        else:
+            print('no api found for packet: ', packet)
+
     @staticmethod
     def _make_response_packet(request_id: str, from_id: str, entity: str, result: object, error: object,
                               failed: bool, old_api=None, replacement_api=None, 

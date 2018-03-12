@@ -11,6 +11,7 @@ import setproctitle
 import time
 import traceback
 import json
+import aiohttp
 
 config = json_file_to_dict('config.json')
 _tcp_timeout = 60
@@ -90,8 +91,14 @@ def request(func):
         app_name = params.pop('app_name', None)
         request_id = unique_hex()
         params['request_id'] = request_id
-        future = self._send_request(app_name, endpoint=func.__name__, entity=entity, params=params)
-        return future
+        # future = self._send_request(app_name, endpoint=func.__name__, entity=entity, params=params)
+        # return future
+        service = self.bus._registry_client.resolve(self._service_name, self._service_version, None, 'http')
+        host, port = service[0], service[1]
+        url = 'http://' + str(host) + ':' + str(port) + '/_tcp_internal/' + str(func.__name__)
+        res = yield from aiohttp.request('get', url, data=json.dumps(params))
+        result = yield from res.json()
+        return result['payload']['result']
 
     wrapper.is_request = True
     return wrapper
