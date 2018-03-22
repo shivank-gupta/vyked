@@ -155,7 +155,7 @@ class Repository:
                 entry)
 
     def get_subscribers(self, service, version, endpoint):
-         return self._subscribe_list[service][version][endpoint]
+        return self._subscribe_list[service][version][endpoint]
 
     def _get_non_breaking_version(self, version, versions):
         if version in versions:
@@ -504,7 +504,7 @@ class Registry:
                        'XSubscription List': self._repository._subscribe_list,
                        'Service Dependencies': self._repository._service_dependencies}
         protocol.send(status_dict)
-
+g
     def _remove_service_from_xsubscribe(self, packet, protocol):
         params = packet['params']
         self._repository._remove_service_from_xsubscribe(params['service'], params['version'])
