@@ -161,7 +161,14 @@ class Repository:
                 entry)
 
     def get_subscribers(self, service, version, endpoint):
-        return self._subscribe_list[service][version][endpoint]
+        subscribers = []
+        for subscriber in self._subscribe_list[service][version][endpoint]:
+            subscriber_service = subscriber[0]
+            subscriber_version = subscriber[1]
+            if self._registered_services[subscriber_service][subscriber_version]:
+                subscribers.append(subscriber)
+
+        return subscribers
 
     def _get_non_breaking_version(self, version, versions):
         if version in versions:
