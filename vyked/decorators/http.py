@@ -37,7 +37,10 @@ def get_decorated_fun(method, path, required_params, timeout):
                 Stats.http_stats['total_requests'] += 1
                 if required_params is not None:
                     req = args[0]
-                    query_params = req.GET
+                    if req.method in ["POST", "DELETE", "PUT"]:
+                        query_params = yield from req.post()
+                    elif req.method == "GET":
+                        query_params = req.GET
                     params = required_params
                     if not isinstance(required_params, list):
                         params = [required_params]
