@@ -39,6 +39,8 @@ def get_decorated_fun(method, path, required_params, timeout):
                     req = args[0]
                     if req.method in ["POST", "DELETE", "PUT"]:
                         query_params = yield from req.post()
+                        if not query_params:
+                            query_params = yield from req.json()
                     elif req.method == "GET":
                         query_params = req.GET
                     params = required_params
