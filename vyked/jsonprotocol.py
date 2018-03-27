@@ -35,7 +35,7 @@ class JSONProtocol(asyncio.Protocol):
         string = json.dumps(packet, cls=VykedEncoder) + '!<^>!'
         string = string.encode()
         
-        if packet['type'] in ['request', 'response']:
+        if 'type' in packet and packet['type'] in ['request', 'response']:
             packet_length = len(string)
             if packet_length >= _VALID_MAXIMUM_PACKET_SIZE_IN_BYTES:
                 logging.error('{} Packet Size in Bytes: {} Endpoint Method: {}'.format(packet['type'].capitalize(), packet_length, packet['endpoint']))
@@ -103,7 +103,7 @@ class JSONProtocol(asyncio.Protocol):
                             partial_data = ''
                             self.on_element(element)
 
-                            if json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS and element['type'] in ['request', 'response']:
+                            if json_loads_time >= _VALID_MAXIMUM_JSON_LOADS_TIME_IN_MS and 'type' in element and element['type'] in ['request', 'response']:
                                 self.logger.error("{} Packet Endpoint: {}  Json Loads Time: {} ms".format(element['type'].capitalize(), element['endpoint'], json_loads_time))
 
                             json_loads_time = 0.0
