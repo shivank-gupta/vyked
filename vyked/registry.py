@@ -507,7 +507,7 @@ class Registry:
         
     def _remove_service_from_xsubscribe(self, packet, protocol):
         params = packet['params']
-        self._repository.remove_service_from_xsubscribe(params['service'], params['version'])
+        self._repository.remove_service_from_xsubscribe(params['service'].lower(), params['version'])
         protocol.send("Successfully Removed " + str(params['service']) + ":" + str(params['version']) + " from XSubscription list.")
 
 if __name__ == '__main__':
