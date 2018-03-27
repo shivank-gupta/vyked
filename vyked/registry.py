@@ -146,7 +146,7 @@ class Repository:
     def xsubscribe(self, service, version, host, port, node_id, endpoints):
         entry = (service, version)
         # Remove all entries of service, version from subscribe list
-        self._remove_service_from_xsubscribe(service, version)
+        self.remove_service_from_xsubscribe(service, version)
 
         # Add entries of service, version into subscribe list - thus keeping
         # only the latest information
@@ -182,7 +182,7 @@ class Repository:
     def _split_key(key: str):
         return tuple(key.split('/'))
 
-    def _remove_service_from_xsubscribe(self, service, version):
+    def remove_service_from_xsubscribe(self, service, version):
         for name, versions in self._subscribe_list.items():
             for p_version, endpoints2 in versions.items():
                 for endpoint, subscribers in endpoints2.items():
@@ -507,7 +507,7 @@ class Registry:
         
     def _remove_service_from_xsubscribe(self, packet, protocol):
         params = packet['params']
-        self._repository._remove_service_from_xsubscribe(params['service'], params['version'])
+        self._repository.remove_service_from_xsubscribe(params['service'], params['version'])
         protocol.send("Successfully Removed " + str(params['service']) + ":" + str(params['version']) + " from XSubscription list.")
 
 if __name__ == '__main__':
