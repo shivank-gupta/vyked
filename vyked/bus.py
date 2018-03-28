@@ -164,7 +164,7 @@ class TCPBus:
             self._logger.debug("TCP  TO HTTP CALL  FOR  {}, HOST {}, PORT {}, PARAMS {}".format(path,host, port, params))
             response = None
             try:
-                response = yield from self._aiohttp_session.request(method, url, params=query_params, **kwargs)
+                response = yield from asyncio.wait_for(asyncio.shield(self._aiohttp_session.request(method, url, params=query_params, **kwargs)), CONFIG.Http_Connection_timeout)
                 result =   yield from response.json()
             except Exception as e:
                 exception = RequestException()
