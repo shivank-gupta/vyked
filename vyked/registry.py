@@ -146,15 +146,9 @@ class Repository:
     def xsubscribe(self, service, version, host, port, node_id, endpoints):
         entry = (service, version)
         # Remove all entries of service, version from subscribe list
-        for name, versions in self._subscribe_list.items():
-            for p_version, endpoints2 in versions.items():
-                for endpoint, subscribers in endpoints2.items():
-                    to_remove = list(filter(lambda x: service == x[0] and version == x[1], 
-                        subscribers))
-                    for subscriber in to_remove:
-                        subscribers.remove(subscriber)
+        self.remove_service_from_xsubscribe(service, version)
 
-        # Add entries of service, version into subscribe list - thus keeping 
+        # Add entries of service, version into subscribe list - thus keeping
         # only the latest information
         for endpoint in endpoints:
             self._subscribe_list[endpoint['service']][endpoint['version']][endpoint['endpoint']].append(
@@ -187,6 +181,15 @@ class Repository:
     @staticmethod
     def _split_key(key: str):
         return tuple(key.split('/'))
+
+    def remove_service_from_xsubscribe(self, service, version):
+        for name, versions in self._subscribe_list.items():
+            for p_version, endpoints2 in versions.items():
+                for endpoint, subscribers in endpoints2.items():
+                    to_remove = list(filter(lambda x: service == x[0] and version == x[1],
+                                            subscribers))
+                    for subscriber in to_remove:
+                        subscribers.remove(subscriber)
 
 
 class Registry:
@@ -263,6 +266,8 @@ class Registry:
             self._show_blacklisted(protocol)
         elif request_type == 'show_current_state':
             self._show_current_state(protocol)
+        elif request_type == 'remove_service_from_xsubscribe':
+            self._remove_service_from_xsubscribe(packet, protocol)
 
     def deregister_service(self, host, port, node_id):
         service = self._repository.get_node(node_id)
@@ -499,6 +504,11 @@ class Registry:
                        'XSubscription List': self._repository._subscribe_list,
                        'Service Dependencies': self._repository._service_dependencies}
         protocol.send(status_dict)
+        
+    def _remove_service_from_xsubscribe(self, packet, protocol):
+        params = packet['params']
+        self._repository.remove_service_from_xsubscribe(params['service'].lower(), params['version'])
+        protocol.send("Successfully Removed " + str(params['service']) + ":" + str(params['version']) + " from XSubscription list.")
 
 if __name__ == '__main__':
     # config_logs(enable_ping_logs=False, log_level=logging.DEBUG)
