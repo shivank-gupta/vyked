@@ -94,7 +94,7 @@ def request(func):
         entity = params.pop('entity', None)
         app_name = params.pop('app_name', None)
         request_id = unique_hex()
-        if CONFIG.Convert_Tcp_To_Http:
+        if CONFIG.convert_tcp_to_http:
             post_params = {'data':params, 'path': tcp_to_http_path_for_function(func) }
             response =  self._send_http_request(app_name, method='post', entity=entity, params=post_params)
             return response
@@ -131,8 +131,8 @@ def api(func=None, timeout=None):  # incoming
         - entity (partition/routing key)
         followed by kwargs
     """
-    #logging.info("convert tcp to http {}".format(CONFIG.Convert_Tcp_To_Http))
-    if CONFIG.Convert_Tcp_To_Http:
+    #logging.info("convert tcp to http {}".format(CONFIG.CONVERT_TCP_TO_HTTP))
+    if CONFIG.convert_tcp_to_http:
         transform_func = tcp_to_http_handler(func, Host._http_service)
         return get_decorated_fun_for_tcp_to_http(transform_func,'post', tcp_to_http_path_for_function(func), None, timeout)
     if func is None:

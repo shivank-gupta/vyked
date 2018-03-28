@@ -78,7 +78,7 @@ class Host:
 
     @classmethod
     def _create_http_server(cls):
-        if cls._http_service or CONFIG.CONVERT_TCP_TO_HTTP:
+        if cls._http_service or CONFIG.convert_tcp_to_http:
             host_ip, host_port = cls._http_service.socket_address
             ssl_context = cls._http_service.ssl_context
             app = Application(loop=asyncio.get_event_loop())
@@ -96,7 +96,7 @@ class Host:
                         if cls._http_service.cross_domain_allowed:
                             app.router.add_route('options', path, cls._http_service.preflight_response)
 
-            if CONFIG.Convert_Tcp_To_Http:
+            if CONFIG.convert_tcp_to_http:
                 for each in dir(cls._tcp_service):
                     fn = getattr(cls._tcp_service, each)
                     if callable(fn) and getattr( fn, 'is_http_method', False) :

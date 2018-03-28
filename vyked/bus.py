@@ -69,7 +69,8 @@ class TCPBus:
         self._registered = False
         self.pubsub = None
         self._logger = logging.getLogger(__name__)
-        tcp_connector = aiohttp.TCPConnector(keepalive_timeout=CONFIG.Http_keep_alive_Timeout)
+        tcp_connector = aiohttp.TCPConnector(conn_timeout=CONFIG.http_connection_timeout,
+                                             keepalive_timeout=CONFIG.http_keep_alive_timeout)
         self._aiohttp_session = aiohttp.ClientSession(connector= tcp_connector)
 
     def _create_service_clients(self):
@@ -164,7 +165,7 @@ class TCPBus:
             self._logger.debug("TCP  TO HTTP CALL  FOR  {}, HOST {}, PORT {}, PARAMS {}".format(path,host, port, params))
             response = None
             try:
-                response = yield from asyncio.wait_for(asyncio.shield(self._aiohttp_session.request(method, url, params=query_params, **kwargs)), CONFIG.Http_Connection_timeout)
+                response = yield from asyncio.wait_for(asyncio.shield(self._aiohttp_session.request(method, url, params=query_params, **kwargs)), CONFIG.http_connection_timeout)
                 result =   yield from response.json()
             except Exception as e:
                 exception = RequestException()
