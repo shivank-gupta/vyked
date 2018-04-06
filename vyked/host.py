@@ -93,6 +93,7 @@ class Host:
                 if callable(fn) and getattr(fn, 'is_http_method', False):
                     for path in fn.paths:
                         app.router.add_route(fn.method, path, fn)
+                        cls._logger.debug(path)
                         if cls._http_service.cross_domain_allowed:
                             app.router.add_route('options', path, cls._http_service.preflight_response)
             handler = app.make_handler(access_log=cls._logger)

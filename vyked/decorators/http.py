@@ -141,33 +141,40 @@ def get_decorated_fun(method, path, required_params, timeout):
     return decorator
 
 
-def get(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('get', path, required_params, timeout)
+def get(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('get', get_path(path, is_internal), required_params, timeout)
 
 
-def head(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('head', path, required_params, timeout)
+def head(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('head', get_path(path, is_internal), required_params, timeout)
 
 
-def options(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('options', path, required_params, timeout)
+def options(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('options', get_path(path, is_internal), required_params, timeout)
 
 
-def patch(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('patch', path, required_params, timeout)
+def patch(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('patch', get_path(path, is_internal), required_params, timeout)
 
 
-def post(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('post', path, required_params, timeout)
+def post(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('post', get_path(path, is_internal), required_params, timeout)
 
 
-def put(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('put', path, required_params, timeout)
+def put(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('put', get_path(path, is_internal), required_params, timeout)
 
 
-def trace(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('put', path, required_params, timeout)
+def trace(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('put', get_path(path, is_internal), required_params, timeout)
 
 
-def delete(path=None, required_params=None, timeout=None):
-    return get_decorated_fun('delete', path, required_params, timeout)
+def delete(path=None, required_params=None, timeout=None, is_internal=False):
+    return get_decorated_fun('delete', get_path(path, is_internal), required_params, timeout)
+
+
+def get_path(path, is_internal=False):
+    if is_internal:
+        path = '/__onemg-internal__' + path
+
+    return path
