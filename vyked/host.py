@@ -78,6 +78,8 @@ class Host:
 
     @classmethod
     def _create_http_server(cls):
+        tcp_count = 0
+        http_count = 0
         if cls._http_service or CONFIG.convert_tcp_to_http:
             host_ip, host_port = cls._http_service.socket_address
             ssl_context = cls._http_service.ssl_context
@@ -91,6 +93,7 @@ class Host:
             for each in cls._http_service.__ordered__:
                 fn = getattr(cls._http_service, each)
                 if callable(fn) and getattr(fn, 'is_http_method', False):
+                    http_count += 1
                     for path in fn.paths:
                         app.router.add_route(fn.method, path, fn)
                         if cls._http_service.cross_domain_allowed:
@@ -100,11 +103,13 @@ class Host:
                 for each in dir(cls._tcp_service):
                     fn = getattr(cls._tcp_service, each)
                     if callable(fn) and getattr( fn, 'is_http_method', False) :
+                            tcp_count += 1
                             path = tcp_to_http_path_for_function(each)
                             cls._logger.info("converted tcp_to_http for host endpoint {}".format(path))
                             app.router.add_route('post', path, fn)
                             if cls._http_service and cls._http_service.cross_domain_allowed:
                                 app.router.add_route('options', path, cls._http_service.preflight_response)
+            cls._logger.info(" REGISTERED TCP END POINTS {} , HTTP END POINTS {}".format(tcp_count,http_count))
             handler = app.make_handler(access_log=cls._logger)
             task = asyncio.get_event_loop().create_server(handler, host_ip, host_port, ssl=ssl_context)
             return asyncio.get_event_loop().run_until_complete(task)
