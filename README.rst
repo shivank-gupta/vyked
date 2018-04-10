@@ -196,8 +196,10 @@ New methods usage
 *TCPServiceClient._send_http_request(method, params)* : automatically resolves host,port for Host service which is registered at registry and sends http request
 * Uses aiohttp  session object with timeout of 60 secs and keep alive timeout of 15 secs
 
-### Host Service
-```
+Sample Host Service
+
+.. code-block:: python
+
 from vyked import TCPService, Host, api, HTTPService, get, Request
 from aiohttp.web import Response
 
@@ -212,13 +214,13 @@ class HTTPService(HTTPService):
         return Response(status=200, body=json.dumps(object_to_dict({'result':success})).encode(),
                         headers={'content-type':'Application/json'})
 
-```
 
-### Client Service
 
-```
+Sample Client Service
+
+.. code-block:: python
+
 from vyked import TCPServiceClient, request
-
 class ServiceClient(TCPServiceClient):
     def __init__(self):
         super(ServiceClient, self).__init__('host_service_1', '1.0.0')
@@ -228,7 +230,11 @@ class ServiceClient(TCPServiceClient):
                                                                       'params':{}})
         result = yield from response.json()
         return result
-```
+
+
+*INTERNAL_HTTP_PREFIX* : Add this to your config if your host has endpoints to be speciafically identified for internal http calls via vyked
+
+
 
 
 

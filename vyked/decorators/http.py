@@ -11,12 +11,8 @@ import socket
 import json
 import time
 import traceback
-
-config = json_file_to_dict('config.json')
-_http_timeout = 60
-
-if isinstance(config, dict) and 'HTTP_TIMEOUT' in config and valid_timeout(config['HTTP_TIMEOUT']):
-    _http_timeout = config['HTTP_TIMEOUT']
+from ..config import CONFIG
+_http_timeout = CONFIG.HTTP_TIMEOUT
 
 def make_request(func, self, args, kwargs, method):
     params = func(self, *args, **kwargs)

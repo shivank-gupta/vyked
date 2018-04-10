@@ -10,12 +10,8 @@ import setproctitle
 import time
 import traceback
 import json
-
-config = json_file_to_dict('config.json')
-_tcp_timeout = 60
-
-if isinstance(config, dict) and 'TCP_TIMEOUT' in config and valid_timeout(config['TCP_TIMEOUT']):
-    _tcp_timeout = config['TCP_TIMEOUT']
+from ..config import CONFIG
+_tcp_timeout = CONFIG.TCP_TIMEOUT
 
 
 def publish(func=None, blocking=False):

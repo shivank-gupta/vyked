@@ -16,6 +16,7 @@ from .packet import ControlPacket
 from .protocol_factory import get_vyked_protocol
 from .utils.jsonencoder import VykedEncoder
 from .exceptions import ClientNotFoundError, RecursionDepthExceeded
+from .config import CONFIG
 
 
 HTTP = 'http'
@@ -251,7 +252,7 @@ class TCPBus:
 
     def send_http_request(self, app: str, service: str, version: str, method: str, entity: str, params: dict):
         host, port, node_id, service_type = self._registry_client.resolve(service, version, entity, HTTP)
-        url = 'http://{}:{}{}'.format(host, port, params.pop('path'))
+        url = 'http://{}:{}{}'.format(host, port, "{}{}".format(CONFIG.INTERNAL_HTTP_PREFIX, params.pop('path')))
 
         http_keys = ['data', 'headers', 'cookies', 'auth', 'allow_redirects', 'compress', 'chunked']
         kwargs = {k: params[k] for k in http_keys if k in params}
