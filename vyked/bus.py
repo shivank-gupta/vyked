@@ -73,6 +73,9 @@ class TCPBus:
         self._registered = False
         self.pubsub = None
         self._logger = logging.getLogger(__name__)
+        tcp_connector = aiohttp.TCPConnector(conn_timeout= 60,
+                                             keepalive_timeout=15)
+        self._aiohttp_session = aiohttp.ClientSession(connector=tcp_connector)
 
     def _create_service_clients(self):
         futures = []
@@ -245,6 +248,24 @@ class TCPBus:
             self._registry_client.blacklist_service(self.http_host.host, self.http_host.port)
         self.pubsub._is_blacklisted = True
         protocol.send('Service Blacklisted Successfully')
+
+    def send_http_request(self, app: str, service: str, version: str, method: str, entity: str, params: dict):
+        host, port, node_id, service_type = self._registry_client.resolve(service, version, entity, HTTP)
+        url = 'http://{}:{}{}'.format(host, port, params.pop('path'))
+
+        http_keys = ['data', 'headers', 'cookies', 'auth', 'allow_redirects', 'compress', 'chunked']
+        kwargs = {k: params[k] for k in http_keys if k in params}
+
+        query_params = params.pop('params', {})
+
+        if app is not None:
+            query_params['app'] = app
+
+        query_params['version'] = version
+        query_params['service'] = service
+        response = yield from asyncio.wait_for(asyncio.shield(self._aiohttp_session.request(method, url, params=query_params, **kwargs)), 60)
+        return response
+
 
 
 class PubSubBus:
