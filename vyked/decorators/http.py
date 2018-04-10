@@ -171,6 +171,6 @@ def delete(path=None, required_params=None, timeout=None, is_internal=False):
 
 def get_path(path, is_internal=False):
     if is_internal:
-        path = '/__onemg-internal__' + path
+        path = CONFIG.INTERNAL_HTTP_PREFIX + path
 
     return path
