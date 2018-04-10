@@ -74,8 +74,8 @@ class TCPBus:
         self._registered = False
         self.pubsub = None
         self._logger = logging.getLogger(__name__)
-        tcp_connector = aiohttp.TCPConnector(conn_timeout= 60,
-                                             keepalive_timeout=15)
+        tcp_connector = aiohttp.TCPConnector(conn_timeout= CONFIG.HTTP_TIMEOUT,
+                                             keepalive_timeout=CONFIG.HTTP_KEEP_ALIVE_TIMEOUT)
         self._aiohttp_session = aiohttp.ClientSession(connector=tcp_connector)
 
     def _create_service_clients(self):
