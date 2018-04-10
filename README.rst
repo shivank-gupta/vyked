@@ -209,7 +209,7 @@ Sample Host Service:
             super(HTTPService, self).__init__('host_service_1', '1.0.0', 'localhost', 4700)
             self.inventory_manager = InventoryManager()
 
-        @get(path='/ping_host_service_1')
+        @get(path='/ping_host_service_1', is_internal=True)
         @exception_handler_http
         def get_config_for_service(self, request: Request) -> Response:
             return Response(status=200, body=json.dumps(object_to_dict({'result':success})).encode(),
