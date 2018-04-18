@@ -164,9 +164,9 @@ class TCPBus:
             query_params['service'] = service
             self._logger.debug("TCP  TO HTTP CALL  FOR  {}, HOST {}, PORT {}, PARAMS {}".format(path,host, port, params))
             response = None
+            result  = None
             try:
                 response = yield from asyncio.wait_for(asyncio.shield(self._aiohttp_session.request(method, url, params=query_params, **kwargs)), CONFIG.http_connection_timeout)
-                result =   yield from response.json()
             except Exception as e:
                 exception = RequestException()
                 if response:
@@ -174,6 +174,14 @@ class TCPBus:
                 else:
                     exception.error = "{}_{}".format(503, "Connection to  http server failed")
                 raise exception
+
+            try:
+                result = yield from response.json()
+            except Exception as e:
+                exception = RequestException()
+                exception.error = "{}_{}".format(503, "Failed to load json from client response :{}".format(str(e)))
+                raise exception
+
             self._logger.debug("TCP  TO HTTP RESPONSE {}".format(result))
             if (not result) or ( result.get('payload',None) == None):
                 raise ClientNotFoundError("{}_{}".format(404, "No response from client"))
