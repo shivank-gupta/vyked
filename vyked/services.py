@@ -137,6 +137,10 @@ class TCPServiceClient(_Service):
         self._pubsub_bus.enqueue(endpoint, payload)
 
 
+    def _send_http_request(self, method, params):
+        response = yield from self.tcp_bus.send_http_request(self.name, self._service_name, self._service_version, method,None , params )
+        return response
+
 class _ServiceHost(_Service):
     def __init__(self, service_name, service_version, host_ip, host_port):
         super(_ServiceHost, self).__init__(service_name, service_version)
@@ -245,6 +249,7 @@ class TCPService(_ServiceHost):
                   'type': _Service._RES_PKT_STR,
                   'payload': payload}
         return packet
+
 
 
 def default_preflight_response(request):
