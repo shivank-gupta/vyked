@@ -533,7 +533,7 @@ class Registry:
         try:
             body = yield from request.json()
         except:
-            return Response(status=200, body=json.dumps({'error': 'Invalid Arguments'}).encode(),
+            return Response(status=400, body=json.dumps({'error': 'Invalid Arguments'}).encode(),
                             content_type='application/json')
 
         if 'service' in body and 'version' in body and 'endpoint' in body:
@@ -541,7 +541,7 @@ class Registry:
             return Response(status=200, body=json.dumps({'data': subscribers}).encode(),
                             content_type='application/json')
         else:
-            return Response(status=200,
+            return Response(status=400,
                             body=json.dumps({'error': 'Required Fields not present (Service, Version, Endpoint)'}).encode(),
                             content_type='application/json')
 
