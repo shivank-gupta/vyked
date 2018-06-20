@@ -5,6 +5,8 @@ import signal
 import os
 
 from aiohttp.web import Application
+from ddtrace import tracer, patch
+from ddtrace.contrib.aiohttp import trace_app
 
 from .bus import TCPBus, PubSubBus
 from vyked.registry_client import RegistryClient
@@ -52,6 +54,7 @@ class Host:
     @classmethod
     def run(cls):
         if cls._tcp_service or cls._http_service:
+            patch(aiohttp=True)
             cls._set_host_id()
             cls._setup_logging()
 
@@ -96,6 +99,8 @@ class Host:
                         cls._logger.debug(path)
                         if cls._http_service.cross_domain_allowed:
                             app.router.add_route('options', path, cls._http_service.preflight_response)
+            trace_app(app, tracer, service='testing-python-service')
+            app['datadog_trace']['distributed_tracing_enabled'] = True
             handler = app.make_handler(access_log=cls._logger)
             task = asyncio.get_event_loop().create_server(handler, host_ip, host_port, ssl=ssl_context)
             return asyncio.get_event_loop().run_until_complete(task)
