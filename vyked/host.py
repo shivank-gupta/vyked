@@ -99,7 +99,7 @@ class Host:
                         cls._logger.debug(path)
                         if cls._http_service.cross_domain_allowed:
                             app.router.add_route('options', path, cls._http_service.preflight_response)
-            trace_app(app, tracer, service='testing-python-service')
+            trace_app(app, tracer, service=cls.name)
             app['datadog_trace']['distributed_tracing_enabled'] = True
             handler = app.make_handler(access_log=cls._logger)
             task = asyncio.get_event_loop().create_server(handler, host_ip, host_port, ssl=ssl_context)
