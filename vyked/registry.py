@@ -6,7 +6,7 @@ from collections import defaultdict, namedtuple
 import time
 import json
 import ssl
-
+from aiohttp.web import Application, Request, Response
 from again.utils import natural_sort
 
 from .packet import ControlPacket
@@ -194,9 +194,10 @@ class Repository:
 
 class Registry:
 
-    def __init__(self, ip, port, repository: Repository):
+    def __init__(self, ip, port, http_port, repository: Repository):
         self._ip = ip
         self._port = port
+        self._http_port = http_port
         self._loop = asyncio.get_event_loop()
         self._client_protocols = {}
         self._service_protocols = {}
@@ -216,16 +217,34 @@ class Registry:
         setup_logging("registry")
         self._loop.add_signal_handler(getattr(signal, 'SIGINT'), partial(self._stop, 'SIGINT'))
         self._loop.add_signal_handler(getattr(signal, 'SIGTERM'), partial(self._stop, 'SIGTERM'))
+
+        app = Application(loop=asyncio.get_event_loop())
+        fn = getattr(self, 'get_subscribers_http')
+        app.router.add_route('POST', '/pub-sub/subscribers', fn)
+
         registry_coroutine = self._loop.create_server(
             partial(get_vyked_protocol, self), self._ip, self._port, ssl=self._ssl_context)
-        server = self._loop.run_until_complete(registry_coroutine)
+        tcp_server = self._loop.run_until_complete(registry_coroutine)
+
+        handler = app.make_handler(access_log=logging.getLogger(__name__))
+        http_registry_coroutine = self._loop.create_server(handler, self._ip,
+                                                           self._http_port,
+                                                           ssl=self._ssl_context)
+        http_server = self._loop.run_until_complete(http_registry_coroutine)
+
         try:
             self._loop.run_forever()
         except Exception as e:
             print(e)
         finally:
-            server.close()
-            self._loop.run_until_complete(server.wait_closed())
+            if tcp_server:
+                tcp_server.close()
+                self._loop.run_until_complete(tcp_server.wait_closed())
+
+            if http_server:
+                http_server.close()
+                self._loop.run_until_complete(http_server.wait_closed())
+
             self._loop.close()
 
     def _stop(self, signame: str):
@@ -510,6 +529,22 @@ class Registry:
         self._repository.remove_service_from_xsubscribe(params['service'].lower(), params['version'])
         protocol.send("Successfully Removed " + str(params['service']) + ":" + str(params['version']) + " from XSubscription list.")
 
+    def get_subscribers_http(self, request: Request) -> Response:
+        try:
+            body = yield from request.json()
+        except:
+            return Response(status=400, body=json.dumps({'error': 'Invalid Arguments'}).encode(),
+                            content_type='application/json')
+
+        if 'service' in body and 'version' in body and 'endpoint' in body:
+            subscribers = self._repository.get_subscribers(body['service'], body['version'], body['endpoint'])
+            return Response(status=200, body=json.dumps({'data': subscribers}).encode(),
+                            content_type='application/json')
+        else:
+            return Response(status=400,
+                            body=json.dumps({'error': 'Required Fields not present (Service, Version, Endpoint)'}).encode(),
+                            content_type='application/json')
+
 if __name__ == '__main__':
     # config_logs(enable_ping_logs=False, log_level=logging.DEBUG)
     from setproctitle import setproctitle
@@ -517,6 +552,7 @@ if __name__ == '__main__':
     setproctitle("registry")
     REGISTRY_HOST = None
     REGISTRY_PORT = 4500
-    registry = Registry(REGISTRY_HOST, REGISTRY_PORT, Repository())
+    REGISTRY_HTTP_PORT = 4501
+    registry = Registry(REGISTRY_HOST, REGISTRY_PORT, REGISTRY_HTTP_PORT, Repository())
     registry.periodic_uptime_logger()
     registry.start()
