@@ -13,7 +13,6 @@ import time
 import traceback
 from ..config import CONFIG
 _http_timeout = CONFIG.HTTP_TIMEOUT
-_api_th
 
 def make_request(func, self, args, kwargs, method):
     params = func(self, *args, **kwargs)
