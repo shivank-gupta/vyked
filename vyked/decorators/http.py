@@ -13,6 +13,7 @@ import time
 import traceback
 from ..config import CONFIG
 _http_timeout = CONFIG.HTTP_TIMEOUT
+_api_th
 
 def make_request(func, self, args, kwargs, method):
     params = func(self, *args, **kwargs)
@@ -50,16 +51,19 @@ def get_decorated_fun(method, path, required_params, timeout):
                                                 server_type='http', time_taken=0, process_time_taken=0)
                         return Response(status=400, content_type='application/json', body=json.dumps(res_d).encode())
 
+                t1 = time.time()
+                tp1 = time.process_time()
+
                 # Support for multi request body encodings
                 req = args[0]
+
                 try:
                     yield from req.json()
                 except:
                     pass
                 else:
                     req.post = req.json
-                t1 = time.time()
-                tp1 = time.process_time()
+
                 wrapped_func = func
                 success = True
                 _logger = logging.getLogger()
@@ -113,10 +117,20 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'time_taken': int((t2 - t1) * 1000),
                         'process_time_taken': int((tp2-tp1) * 1000),
                         'type': 'http',
-                        'hostname': hostname, 'service_name': service_name
+                        'hostname': hostname,
+                        'service_name': service_name,
+                        'endpoint': func.__name__,
+                        'api_execution_threshold_exceed': False
                     }
-                    logging.getLogger('stats').debug(logd)
-                    _logger.debug('Timeout for %s is %s seconds', func.__name__, api_timeout)
+
+                    method_execution_time = (t2 - t1)
+
+                    if method_execution_time > CONFIG.API_THRESHOLD_TIMEOUT:
+                        logd['api_execution_threshold_exceed'] = True
+                        logging.getLogger('stats').info(logd)
+                    else:
+                        logging.getLogger('stats').debug(logd)
+
                     Stats.http_stats['total_responses'] += 1
                     return result
 
