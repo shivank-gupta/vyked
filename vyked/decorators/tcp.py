@@ -190,9 +190,20 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
         logd = {
             'endpoint': func.__name__,
             'time_taken': end_time - start_time,
-            'hostname': hostname, 'service_name': service_name
+            'hostname': hostname,
+            'service_name': service_name,
+            'endpoint': func.__name__,
+            'api_execution_threshold_exceed': False
         }
-        logging.getLogger('stats').debug(logd)
+
+        method_execution_time = (end_time - start_time)
+
+        if method_execution_time > (CONFIG.SLOW_API_THRESHOLD * 1000):
+            logd['api_execution_threshold_exceed'] = True
+            logging.getLogger('stats').info(logd)
+        else:
+            logging.getLogger('stats').debug(logd)
+
         _logger.debug('Time taken for %s is %d milliseconds', func.__name__, end_time - start_time)
         _logger.debug('Timeout for %s is %s seconds', func.__name__, api_timeout)
 
