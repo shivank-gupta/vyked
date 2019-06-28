@@ -198,7 +198,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
 
         method_execution_time = (end_time - start_time)
 
-        if method_execution_time > (CONFIG.API_THRESHOLD_TIMEOUT * 1000):
+        if method_execution_time > (CONFIG.SLOW_API_THRESHOLD * 1000):
             logd['api_execution_threshold_exceed'] = True
             logging.getLogger('stats').info(logd)
         else:

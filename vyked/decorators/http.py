@@ -74,6 +74,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if not iscoroutine(func):
                     wrapped_func = coroutine(func)
 
+
                 try:
                     result = yield from wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
 
@@ -124,7 +125,7 @@ def get_decorated_fun(method, path, required_params, timeout):
 
                     method_execution_time = (t2 - t1)
 
-                    if method_execution_time > CONFIG.API_THRESHOLD_TIMEOUT:
+                    if method_execution_time > CONFIG.SLOW_API_THRESHOLD:
                         logd['api_execution_threshold_exceed'] = True
                         logging.getLogger('stats').info(logd)
                     else:

@@ -7,4 +7,4 @@ class CONFIG:
     TCP_TIMEOUT = config['TCP_TIMEOUT'] if isinstance(config, dict) and 'TCP_TIMEOUT' in config and valid_timeout(config['TCP_TIMEOUT']) else 60
     HTTP_KEEP_ALIVE_TIMEOUT = config['HTTP_KEEP_ALIVE_TIMEOUT'] if isinstance(config, dict) and 'HTTP_KEEP_ALIVE_TIMEOUT' in config and valid_timeout(config['HTTP_KEEP_ALIVE_TIMEOUT']) else 15
     INTERNAL_HTTP_PREFIX = '/__onemg-internal__'
-    API_THRESHOLD_TIMEOUT = config['API_THRESHOLD_TIMEOUT'] if isinstance(config, dict) and 'API_THRESHOLD_TIMEOUT' in config and valid_timeout(config['API_THRESHOLD_TIMEOUT']) else 1
+    SLOW_API_THRESHOLD = config['SLOW_API_THRESHOLD'] if isinstance(config, dict) and 'SLOW_API_THRESHOLD' in config and valid_timeout(config['SLOW_API_THRESHOLD']) else 1
