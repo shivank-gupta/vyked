@@ -83,6 +83,17 @@ def get_decorated_fun(method, path, required_params, timeout):
                     status = 'timeout'
                     success = False
                     _logger.exception("HTTP request had a timeout for method %s", func.__name__)
+                    timeout_log = {
+                        'time_taken': api_timeout,
+                        'type': 'http',
+                        'hostname': socket.gethostbyname(socket.gethostname()),
+                        'service_name': self._service_name,
+                        'endpoint': func.__name__,
+                        'api_execution_threshold_exceed': True,
+                        'api_timeout': True
+                    }
+
+                    logging.getLogger('stats').info(timeout_log)
                     raise e
 
                 except VykedServiceException as e:
