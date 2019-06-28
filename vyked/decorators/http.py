@@ -50,19 +50,16 @@ def get_decorated_fun(method, path, required_params, timeout):
                                                 server_type='http', time_taken=0, process_time_taken=0)
                         return Response(status=400, content_type='application/json', body=json.dumps(res_d).encode())
 
-                t1 = time.time()
-                tp1 = time.process_time()
-
                 # Support for multi request body encodings
                 req = args[0]
-
                 try:
                     yield from req.json()
                 except:
                     pass
                 else:
                     req.post = req.json
-
+                t1 = time.time()
+                tp1 = time.process_time()
                 wrapped_func = func
                 success = True
                 _logger = logging.getLogger()
@@ -74,7 +71,6 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if not iscoroutine(func):
                     wrapped_func = coroutine(func)
 
-
                 try:
                     result = yield from wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
 
@@ -83,17 +79,6 @@ def get_decorated_fun(method, path, required_params, timeout):
                     status = 'timeout'
                     success = False
                     _logger.exception("HTTP request had a timeout for method %s", func.__name__)
-                    timeout_log = {
-                        'time_taken': api_timeout,
-                        'type': 'http',
-                        'hostname': socket.gethostbyname(socket.gethostname()),
-                        'service_name': self._service_name,
-                        'endpoint': func.__name__,
-                        'api_execution_threshold_exceed': True,
-                        'api_timeout': True
-                    }
-
-                    logging.getLogger('stats').info(timeout_log)
                     raise e
 
                 except VykedServiceException as e:
@@ -128,20 +113,10 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'time_taken': int((t2 - t1) * 1000),
                         'process_time_taken': int((tp2-tp1) * 1000),
                         'type': 'http',
-                        'hostname': hostname,
-                        'service_name': service_name,
-                        'endpoint': func.__name__,
-                        'api_execution_threshold_exceed': False
+                        'hostname': hostname, 'service_name': service_name
                     }
-
-                    method_execution_time = (t2 - t1)
-
-                    if method_execution_time > CONFIG.SLOW_API_THRESHOLD:
-                        logd['api_execution_threshold_exceed'] = True
-                        logging.getLogger('stats').info(logd)
-                    else:
-                        logging.getLogger('stats').debug(logd)
-
+                    logging.getLogger('stats').debug(logd)
+                    _logger.debug('Timeout for %s is %s seconds', func.__name__, api_timeout)
                     Stats.http_stats['total_responses'] += 1
                     return result
 
