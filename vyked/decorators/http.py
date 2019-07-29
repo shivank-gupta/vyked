@@ -1,67 +1,26 @@
-from asyncio import iscoroutine, coroutine, wait_for, TimeoutError, shield
+from asyncio import wait_for, TimeoutError, shield
 from functools import wraps
-from vyked import HTTPServiceClient, HTTPService
 from ..exceptions import VykedServiceException
-from aiohttp.web import Response
 from ..utils.stats import Stats, Aggregator
 from ..utils.common_utils import json_file_to_dict, valid_timeout
 import logging
 import setproctitle
 import socket
-import json
 import time
 import traceback
 from ..config import CONFIG
 _http_timeout = CONFIG.HTTP_TIMEOUT
 
-def make_request(func, self, args, kwargs, method):
-    params = func(self, *args, **kwargs)
-    entity = params.pop('entity', None)
-    app_name = params.pop('app_name', None)
-    self = params.pop('self')
-    response = yield from self._send_http_request(app_name, method, entity, params)
-    return response
-
 
 def get_decorated_fun(method, path, required_params, timeout):
     def decorator(func):
         @wraps(func)
-        def f(self, *args, **kwargs):
-            if isinstance(self, HTTPServiceClient):
-                return (yield from make_request(func, self, args, kwargs, method))
-            elif isinstance(self, HTTPService):
+        async def f(self, *args, **kwargs):
+            if True:
                 Stats.http_stats['total_requests'] += 1
-                if required_params is not None:
-                    req = args[0]
-                    if req.method in ["POST", "DELETE", "PUT", "PATCH"]:
-                        query_params = yield from req.post()
-                        if not query_params:
-                            query_params = yield from req.json()
-                    elif req.method == "GET":
-                        query_params = req.GET
-                    params = required_params
-                    if not isinstance(required_params, list):
-                        params = [required_params]
-                    missing_params = list(filter(lambda x: x not in query_params, params))
-                    if len(missing_params) > 0:
-                        res_d = {'error': 'Required params {} not found'.format(','.join(missing_params))}
-                        Stats.http_stats['total_responses'] += 1
-                        Aggregator.update_stats(endpoint=func.__name__, status=400, success=False,
-                                                server_type='http', time_taken=0, process_time_taken=0)
-                        return Response(status=400, content_type='application/json', body=json.dumps(res_d).encode())
 
                 t1 = time.time()
                 tp1 = time.process_time()
-
-                # Support for multi request body encodings
-                req = args[0]
-
-                try:
-                    yield from req.json()
-                except:
-                    pass
-                else:
-                    req.post = req.json
 
                 wrapped_func = func
                 success = True
@@ -71,12 +30,11 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if valid_timeout(timeout):
                     api_timeout = timeout
 
-                if not iscoroutine(func):
-                    wrapped_func = coroutine(func)
-
+                service_name = '_'.join(setproctitle.getproctitle().split('_')[:-1])
+                service_name = service_name.replace('vyked_', '')
 
                 try:
-                    result = yield from wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
+                    result = await wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
 
                 except TimeoutError as e:
                     Stats.http_stats['timedout'] += 1
@@ -87,7 +45,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'time_taken': api_timeout,
                         'type': 'http',
                         'hostname': socket.gethostbyname(socket.gethostname()),
-                        'service_name': self._service_name,
+                        'service_name': service_name,
                         'endpoint': func.__name__,
                         'api_execution_threshold_exceed': True,
                         'api_timeout': True
@@ -109,7 +67,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                     _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
                     _stats_logger = logging.getLogger('stats')
                     d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
-                         "service_name": self._service_name, "hostname": socket.gethostbyname(socket.gethostname())}
+                         "service_name": service_name, "hostname": socket.gethostbyname(socket.gethostname())}
                     _stats_logger.info(dict(d))
                     _exception_logger = logging.getLogger('exceptions')
                     d["message"] = traceback.format_exc()

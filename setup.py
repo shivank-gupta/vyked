@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 from os import getcwd, path
-from pip.req import parse_requirements
-from pip.download import PipSession
+from pip._internal.req  import parse_requirements
+from pip._internal.download import PipSession
 
 import ast
 import re
