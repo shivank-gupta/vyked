@@ -4,6 +4,7 @@ from aiohttp import web
 from .utils.log import setup_logging, LogFormatHelper
 from vyked.utils.stats import Stats, Aggregator
 from .utils.client_stats import ClientStats
+from .handler import ApplicationRequestHandler
 
 class Host:
     name = None
@@ -48,6 +49,9 @@ class Host:
     def _start_server(cls):
         if cls._handlers:
             app = web.Application(loop=asyncio.get_event_loop())
+            app.router.add_route('GET', '/ping', getattr(ApplicationRequestHandler, 'ping'))
+            app.router.add_route('GET', '/_stats', getattr(ApplicationRequestHandler, 'stats'))
+            app.router.add_route('GET', '/_change_log_level/{level}', getattr(ApplicationRequestHandler, 'handle_log_change'))
 
             for handler in cls._handlers:
                 for each in handler.__ordered__:

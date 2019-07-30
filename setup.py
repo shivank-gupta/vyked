@@ -41,9 +41,9 @@ with open('vyked/__init__.py', 'rb') as i:
 setup(
     name='vyked',
     version=version,
-    author='Kashif Razzaqui, Ankit Chandawala',
-    author_email='kashif.razzaqui@gmail.com, ankitchandawala@gmail.com',
-    url='https://github.com/kashifrazzaqui/vyked',
+    author='1mg',
+    author_email='devops@1mg.com',
+    url='https://github.com/1mgOfficial/vyked',
     description='A micro-service framework for Python',
     packages=find_packages(exclude=['examples', 'tests', 'docs']),
     package_data={'requirements': ['*.txt']},
