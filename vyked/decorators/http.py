@@ -78,7 +78,6 @@ def get_decorated_fun(method, path, required_params, timeout):
                     t2 = time.time()
                     tp2 = time.process_time()
                     hostname = socket.gethostname()
-                    service_name = '_'.join(setproctitle.getproctitle().split('_')[:-1])
                     status = result.status
 
                     logd = {
