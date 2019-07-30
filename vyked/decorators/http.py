@@ -30,8 +30,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if valid_timeout(timeout):
                     api_timeout = timeout
 
-                service_name = '_'.join(setproctitle.getproctitle().split('_')[:-1])
-                service_name = service_name.replace('vyked_', '')
+                service_name = '_'.join(setproctitle.getproctitle().split('_')[1:-1])
 
                 try:
                     result = await wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
