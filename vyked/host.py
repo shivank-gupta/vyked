@@ -4,7 +4,9 @@ from aiohttp import web
 from .utils.log import setup_logging, LogFormatHelper
 from vyked.utils.stats import Stats, Aggregator
 from .utils.client_stats import ClientStats
+from .utils.common_utils import ServiceAttribute
 from .handler import ApplicationRequestHandler
+import socket
 
 class Host:
     name = None
@@ -37,13 +39,13 @@ class Host:
     def run(cls):
         if cls._handlers:
             cls._set_host_id()
+            cls._set_process_name()
+            cls._setup_service_attribute()
             cls._setup_logging()
 
-            cls._set_process_name()
             cls._start_server()
         else:
             cls._logger.error('No handlers to start host')
-
 
     @classmethod
     def _start_server(cls):
@@ -67,19 +69,21 @@ class Host:
                         access_log=cls._logger,
                         access_log_format=LogFormatHelper.LogFormat)
 
-
     @classmethod
     def _set_host_id(cls):
         from uuid import uuid4
 
         cls._host_id = uuid4()
 
+    @classmethod
+    def _setup_service_attribute(cls):
+        ServiceAttribute.name = cls.name
+        ServiceAttribute.hostname = socket.gethostbyname(socket.gethostname())
 
     @classmethod
     def _setup_logging(cls):
         identifier = '{}_{}'.format(cls.name, cls.port)
         setup_logging(identifier)
-        Stats.service_name = cls.name
         Stats.periodic_stats_logger()
         Aggregator.periodic_aggregated_stats_logger()
         ClientStats.periodic_aggregator()

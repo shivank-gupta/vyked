@@ -1,6 +1,4 @@
 import json
-import setproctitle
-import socket
 
 
 def json_file_to_dict(_file: str) -> dict:
@@ -27,5 +25,5 @@ def valid_timeout(timeout):
 
 
 class ServiceAttribute:
-    name = '_'.join(setproctitle.getproctitle().split('_')[1:-1])
-    hostname = socket.gethostbyname(socket.gethostname())
+    name = ''
+    hostname = ''
