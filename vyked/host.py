@@ -7,11 +7,14 @@ from .utils.client_stats import ClientStats
 from .utils.common_utils import ServiceAttribute
 from .handler import ApplicationRequestHandler
 import socket
+import aiotask_context as context
+from .middleware import request_id_middleware
 
 class Host:
     name = None
     host = "0.0.0.0"
     port = None
+    _middlewares = [request_id_middleware]
     _host_id = None
     _handlers = None
 
@@ -36,6 +39,14 @@ class Host:
             cls._logger.error('Invalid argument attached as handlers')
 
     @classmethod
+    def attach_web_middlewares(cls, middlewares):
+        if middlewares:
+            for each in middlewares:
+                cls._middlewares.append(each)
+        else:
+            cls._logger.error('Invalid argument attached as middlewares')
+
+    @classmethod
     def run(cls):
         if cls._handlers:
             cls._set_host_id()
@@ -50,7 +61,10 @@ class Host:
     @classmethod
     def _start_server(cls):
         if cls._handlers:
-            app = web.Application(loop=asyncio.get_event_loop())
+            app = web.Application(loop=asyncio.get_event_loop(), middlewares=cls._middlewares)
+            loop = asyncio.get_event_loop()
+            loop.set_task_factory(context.task_factory)
+
             app.router.add_route('GET', '/ping', getattr(ApplicationRequestHandler, 'ping'))
             app.router.add_route('GET', '/_stats', getattr(ApplicationRequestHandler, 'stats'))
             app.router.add_route('GET', '/_change_log_level/{level}', getattr(ApplicationRequestHandler, 'handle_log_change'))
