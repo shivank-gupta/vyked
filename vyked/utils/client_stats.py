@@ -1,7 +1,5 @@
 import logging
 import asyncio
-import socket
-import setproctitle
 from .common_utils import ServiceAttribute
 
 class ClientStats():
