@@ -9,18 +9,16 @@ from .common_utils import ServiceAttribute
 
 class Stats:
     rusage_denom = 1024.
-
-    hostname = ServiceAttribute.hostname
-    service_name = ServiceAttribute.name
-    # hostd = {'hostname': '', 'service_name': ''}
     http_stats = {'total_requests': 0, 'total_responses': 0, 'timedout': 0, 'total_errors': 0}
     tcp_stats = {'total_requests': 0, 'total_responses': 0, 'timedout': 0, 'total_errors': 0}
 
     @classmethod
     def periodic_stats_logger(cls):
+        hostname = ServiceAttribute.hostname
+        service_name = ServiceAttribute.name
         logd = defaultdict(lambda: 0)
-        logd['hostname'] = cls.hostname
-        logd['service_name'] = cls.service_name
+        logd['hostname'] = hostname
+        logd['service_name'] = service_name
         logd['mem_usage'] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / cls.rusage_denom
 
         for key, value in cls.http_stats.items():

@@ -2,7 +2,7 @@ import logging
 import asyncio
 import socket
 import setproctitle
-
+from .common_utils import ServiceAttribute
 
 class ClientStats():
     _client_dict = dict()
@@ -18,8 +18,8 @@ class ClientStats():
 
     @classmethod
     def periodic_aggregator(cls):
-        hostname = socket.gethostbyname(socket.gethostname())
-        service_name = '_'.join(setproctitle.getproctitle().split('_')[1:-1])
+        hostname = ServiceAttribute.hostname
+        service_name = ServiceAttribute.name
 
         logs = []
 
