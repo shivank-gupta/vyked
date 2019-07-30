@@ -2,7 +2,7 @@ from asyncio import wait_for, TimeoutError, shield
 from functools import wraps
 from ..exceptions import VykedServiceException
 from ..utils.stats import Stats, Aggregator
-from ..utils.common_utils import json_file_to_dict, valid_timeout
+from ..utils.common_utils import valid_timeout, ServiceAttribute
 import logging
 import setproctitle
 import socket
@@ -30,7 +30,8 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if valid_timeout(timeout):
                     api_timeout = timeout
 
-                service_name = '_'.join(setproctitle.getproctitle().split('_')[1:-1])
+                hostname = ServiceAttribute.hostname
+                service_name = ServiceAttribute.name
 
                 try:
                     result = await wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
@@ -43,7 +44,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                     timeout_log = {
                         'time_taken': api_timeout,
                         'type': 'http',
-                        'hostname': socket.gethostbyname(socket.gethostname()),
+                        'hostname': hostname,
                         'service_name': service_name,
                         'endpoint': func.__name__,
                         'api_execution_threshold_exceed': True,
@@ -66,7 +67,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                     _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
                     _stats_logger = logging.getLogger('stats')
                     d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
-                         "service_name": service_name, "hostname": socket.gethostbyname(socket.gethostname())}
+                         "service_name": service_name, "hostname": hostname}
                     _stats_logger.info(dict(d))
                     _exception_logger = logging.getLogger('exceptions')
                     d["message"] = traceback.format_exc()
@@ -76,7 +77,6 @@ def get_decorated_fun(method, path, required_params, timeout):
                 else:
                     t2 = time.time()
                     tp2 = time.process_time()
-                    hostname = socket.gethostname()
                     status = result.status
 
                     logd = {

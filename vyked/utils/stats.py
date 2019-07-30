@@ -4,13 +4,14 @@ import setproctitle
 from collections import defaultdict
 import socket
 import resource
+from .common_utils import ServiceAttribute
 
 
 class Stats:
     rusage_denom = 1024.
 
-    hostname = socket.gethostbyname(socket.gethostname())
-    service_name = '_'.join(setproctitle.getproctitle().split('_')[1:-1])
+    hostname = ServiceAttribute.hostname
+    service_name = ServiceAttribute.name
     # hostd = {'hostname': '', 'service_name': ''}
     http_stats = {'total_requests': 0, 'total_responses': 0, 'timedout': 0, 'total_errors': 0}
     tcp_stats = {'total_requests': 0, 'total_responses': 0, 'timedout': 0, 'total_errors': 0}
@@ -106,8 +107,8 @@ class Aggregator:
 
     @classmethod
     def periodic_aggregated_stats_logger(cls):
-        hostname = socket.gethostbyname(socket.gethostname())
-        service_name = '_'.join(setproctitle.getproctitle().split('_')[1:-1])
+        hostname = ServiceAttribute.hostname
+        service_name = ServiceAttribute.name
 
         logd = cls._stats.to_dict()
         logs = []
