@@ -4,8 +4,6 @@ from ..exceptions import VykedServiceException
 from ..utils.stats import Stats, Aggregator
 from ..utils.common_utils import valid_timeout, ServiceAttribute
 import logging
-import setproctitle
-import socket
 import time
 import traceback
 from ..config import CONFIG
