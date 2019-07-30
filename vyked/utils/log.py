@@ -29,7 +29,7 @@ def http_ping_filter(record):
 
 
 class LogFormatHelper:
-    LogFormat = '%a %l %u %t "%r" %s %b %D "%{Referrer}i" "%{User-Agent}i"'
+    LogFormat = '%a %t "%r" %s %b %D "%{Referer}i" "%{User-Agent}i" %{X-Request-ID}o'
 
 
 class CustomTimeLoggingFormatter(logging.Formatter):

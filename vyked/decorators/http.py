@@ -6,7 +6,9 @@ from ..utils.common_utils import valid_timeout, ServiceAttribute
 import logging
 import time
 import traceback
+import aiotask_context as context
 from ..config import CONFIG
+
 _http_timeout = CONFIG.HTTP_TIMEOUT
 
 
@@ -30,6 +32,7 @@ def get_decorated_fun(method, path, required_params, timeout):
 
                 hostname = ServiceAttribute.hostname
                 service_name = ServiceAttribute.name
+                request_id = context.get("X-Request-ID")
 
                 try:
                     result = await wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
@@ -46,7 +49,8 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'service_name': service_name,
                         'endpoint': func.__name__,
                         'api_execution_threshold_exceed': True,
-                        'api_timeout': True
+                        'api_timeout': True,
+                        'request_id': request_id
                     }
 
                     logging.getLogger('stats').info(timeout_log)
@@ -65,7 +69,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                     _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
                     _stats_logger = logging.getLogger('stats')
                     d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
-                         "service_name": service_name, "hostname": hostname}
+                         "service_name": service_name, "hostname": hostname, 'request_id': request_id}
                     _stats_logger.info(dict(d))
                     _exception_logger = logging.getLogger('exceptions')
                     d["message"] = traceback.format_exc()
@@ -85,7 +89,8 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'hostname': hostname,
                         'service_name': service_name,
                         'endpoint': func.__name__,
-                        'api_execution_threshold_exceed': False
+                        'api_execution_threshold_exceed': False,
+                        'request_id': request_id
                     }
 
                     method_execution_time = (t2 - t1)

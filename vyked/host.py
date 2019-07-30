@@ -10,6 +10,7 @@ import socket
 import aiotask_context as context
 from .middleware import request_id_middleware
 
+
 class Host:
     name = None
     host = "0.0.0.0"
