@@ -4,7 +4,7 @@ from vyked import HTTPServiceClient, HTTPService
 from ..exceptions import VykedServiceException
 from aiohttp.web import Response
 from ..utils.stats import Stats, Aggregator
-from ..utils.common_utils import json_file_to_dict, valid_timeout
+from ..utils.common_utils import valid_timeout, ONEMG_REQUEST_ID, set_request_id_in_coro_task, call_anonymous_function
 import logging
 import setproctitle
 import socket
@@ -21,6 +21,12 @@ def make_request(func, self, args, kwargs, method):
     self = params.pop('self')
     response = yield from self._send_http_request(app_name, method, entity, params)
     return response
+
+
+def set_coro_request_id(request_obj):
+    request_id = request_obj.headers.get(ONEMG_REQUEST_ID)
+    # set test_case_id in request context
+    set_request_id_in_coro_task(request_id)
 
 
 def get_decorated_fun(method, path, required_params, timeout):
@@ -74,7 +80,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if not iscoroutine(func):
                     wrapped_func = coroutine(func)
 
-
+                set_coro_request_id(args[0])
                 try:
                     result = yield from wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
 

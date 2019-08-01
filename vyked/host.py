@@ -13,6 +13,7 @@ from .protocol_factory import get_vyked_protocol
 from .utils.log import setup_logging, LogFormatHelper
 from vyked.utils.stats import Stats, Aggregator
 from .utils.client_stats import ClientStats
+from .utils.common_utils import monkey_patch_asyncio_task_factory, ONEMG_REQUEST_ID
 
 class Host:
     registry_host = None
@@ -52,6 +53,7 @@ class Host:
     @classmethod
     def run(cls):
         if cls._tcp_service or cls._http_service:
+            monkey_patch_asyncio_task_factory()
             cls._set_host_id()
             cls._setup_logging()
 

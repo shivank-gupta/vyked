@@ -2,7 +2,7 @@ from functools import wraps, partial
 from again.utils import unique_hex
 from ..utils.stats import Stats, Aggregator
 from ..exceptions import VykedServiceException
-from ..utils.common_utils import json_file_to_dict, valid_timeout
+from ..utils.common_utils import json_file_to_dict, valid_timeout, set_request_id_in_coro_task, ONEMG_REQUEST_ID
 import asyncio
 import logging
 import socket
@@ -93,6 +93,12 @@ def request(func):
     return wrapper
 
 
+def set_coro_request_id(params):
+    request_id = params.pop(ONEMG_REQUEST_ID, None)
+    # set test_case_id in request context
+    set_request_id_in_coro_task(request_id)
+
+
 def api(func=None, timeout=None):  # incoming
     """
     provide a request/response api
@@ -143,6 +149,8 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             api_timeout = timeout
 
         Stats.tcp_stats['total_requests'] += 1
+        print(kwargs)
+        set_coro_request_id(kwargs)
 
         try:
             result = yield from asyncio.wait_for(asyncio.shield(wrapped_func(self, **kwargs)), api_timeout)

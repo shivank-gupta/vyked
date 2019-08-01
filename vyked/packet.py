@@ -1,5 +1,6 @@
 from collections import defaultdict
 from uuid import uuid4
+from .utils.common_utils import ONEMG_REQUEST_ID, get_coro_task_request_id
 
 
 class _Packet:
@@ -154,14 +155,17 @@ class MessagePacket(_Packet):
 
     @classmethod
     def request(cls, name, version, app_name, packet_type, endpoint, params, entity):
-        return {'pid': cls._next_pid(),
-                'app': app_name,
-                'service': name,
-                'version': version,
-                'entity': entity,
-                'endpoint': endpoint,
-                'type': packet_type,
-                'payload': params}
+        params[ONEMG_REQUEST_ID] = get_coro_task_request_id()
+        return {
+            'pid': cls._next_pid(),
+            'app': app_name,
+            'service': name,
+            'version': version,
+            'entity': entity,
+            'endpoint': endpoint,
+            'type': packet_type,
+            'payload': params
+        }
 
     @classmethod
     def publish(cls, publish_id, service, version, endpoint, payload):

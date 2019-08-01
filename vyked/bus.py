@@ -15,6 +15,7 @@ from .pubsub import PubSub
 from .packet import ControlPacket
 from .protocol_factory import get_vyked_protocol
 from .utils.jsonencoder import VykedEncoder
+from .utils.common_utils import ONEMG_REQUEST_ID, get_coro_task_request_id
 from .exceptions import ClientNotFoundError, RecursionDepthExceeded
 from .config import CONFIG
 
@@ -46,6 +47,10 @@ class HTTPBus:
 
         http_keys = ['data', 'headers', 'cookies', 'auth', 'allow_redirects', 'compress', 'chunked']
         kwargs = {k: params[k] for k in http_keys if k in params}
+
+        headers = kwargs.get('headers') or dict()
+        headers[ONEMG_REQUEST_ID] = get_coro_task_request_id()
+        kwargs['headers'] = headers
 
         query_params = params.pop('params', {})
 
