@@ -18,5 +18,5 @@ def monkey_patch_asyncio_task_factory():
             setattr(task, SHARED_CONTEXT, shared_context)
         return task
 
-        asyncio.base_events.BaseEventLoop.create_task_old = asyncio.base_events.BaseEventLoop.create_task
-        asyncio.base_events.BaseEventLoop.create_task = decorate_base_event_loop_create_task_routine
+    asyncio.base_events.BaseEventLoop.create_task_old = asyncio.base_events.BaseEventLoop.create_task
+    asyncio.base_events.BaseEventLoop.create_task = decorate_base_event_loop_create_task_routine
