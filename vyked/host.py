@@ -11,7 +11,7 @@ from .bus import TCPBus, PubSubBus
 from vyked.registry_client import RegistryClient
 from vyked.services import HTTPService, TCPService
 from .protocol_factory import get_vyked_protocol
-from .utils.log import setup_logging
+from .utils.log import setup_logging, LogFormatHelper
 from vyked.utils.stats import Stats, Aggregator
 from .utils.client_stats import ClientStats
 from .middleware import request_id_middleware_factory
@@ -99,7 +99,8 @@ class Host:
                         cls._logger.debug(path)
                         if cls._http_service.cross_domain_allowed:
                             app.router.add_route('options', path, cls._http_service.preflight_response)
-            handler = app.make_handler(access_log=cls._logger)
+            handler = app.make_handler(access_log=cls._logger,
+                                       access_log_format=LogFormatHelper.LogFormat)
             task = asyncio.get_event_loop().create_server(handler, host_ip, host_port, ssl=ssl_context)
             return asyncio.get_event_loop().run_until_complete(task)
 

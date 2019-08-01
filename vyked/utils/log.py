@@ -43,6 +43,11 @@ def http_ping_filter(record):
        return 0
     return 1
 
+
+class LogFormatHelper:
+    LogFormat = '%a %l %u %t "%r" %s %b %D "%{Referrer}i" "%{User-Agent}i"'
+
+
 class CustomTimeLoggingFormatter(logging.Formatter):
 
     def formatTime(self, record, datefmt=None):  # noqa
