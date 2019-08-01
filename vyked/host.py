@@ -5,6 +5,7 @@ import signal
 import os
 
 from aiohttp.web import Application
+from .utils.monkey_patch_asyncio import monkey_patch_asyncio_task_factory
 
 from .bus import TCPBus, PubSubBus
 from vyked.registry_client import RegistryClient
@@ -13,6 +14,7 @@ from .protocol_factory import get_vyked_protocol
 from .utils.log import setup_logging
 from vyked.utils.stats import Stats, Aggregator
 from .utils.client_stats import ClientStats
+from .middleware import request_id_middleware_factory
 
 class Host:
     registry_host = None
@@ -52,6 +54,7 @@ class Host:
     @classmethod
     def run(cls):
         if cls._tcp_service or cls._http_service:
+            monkey_patch_asyncio_task_factory()
             cls._set_host_id()
             cls._setup_logging()
 
@@ -81,7 +84,7 @@ class Host:
         if cls._http_service:
             host_ip, host_port = cls._http_service.socket_address
             ssl_context = cls._http_service.ssl_context
-            app = Application(loop=asyncio.get_event_loop())
+            app = Application(loop=asyncio.get_event_loop(), middlewares=[request_id_middleware_factory])
             fn = getattr(cls._http_service, 'pong')
             fn2 = getattr(cls._http_service, 'pong2')
             app.router.add_route('GET', '/ping/{node}', fn)

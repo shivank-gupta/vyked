@@ -1,5 +1,8 @@
 import json
 
+SHARED_CONTEXT = 'X-Shared-Context'
+X_REQUEST_ID = 'X-Request-ID'
+
 def json_file_to_dict(_file: str) -> dict:
     """
     convert json file data to dict
