@@ -20,6 +20,6 @@ class SharedContext:
 
         if hasattr(current_task, cls.SHARED_CONTEXT):
             shared_context = getattr(current_task, cls.SHARED_CONTEXT)
-            return shared_context[key]
+            return shared_context.get(key)
 
         return None
