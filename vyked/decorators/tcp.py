@@ -175,7 +175,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             _method_param = json.dumps(kwargs)
             d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
                  "method_param": _method_param, "service_name": self._service_name,
-                 "hostname": socket.gethostbyname(socket.gethostname())}
+                 "hostname": socket.gethostbyname(socket.gethostname()), X_REQUEST_ID: tracking_id}
             _stats_logger.info(dict(d))
             _exception_logger = logging.getLogger('exceptions')
             d["message"] = traceback.format_exc()
@@ -196,7 +196,8 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             'hostname': hostname,
             'service_name': service_name,
             'endpoint': func.__name__,
-            'api_execution_threshold_exceed': False
+            'api_execution_threshold_exceed': False,
+            X_REQUEST_ID: tracking_id
         }
 
         method_execution_time = (end_time - start_time)
