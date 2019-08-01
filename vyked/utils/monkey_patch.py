@@ -1,5 +1,9 @@
+import aiohttp
 import asyncio
+
 from ..shared_context import SharedContext
+from .common_utils import X_REQUEST_ID
+
 
 def monkey_patch_asyncio_task_factory():
     """
@@ -20,3 +24,15 @@ def monkey_patch_asyncio_task_factory():
 
     asyncio.base_events.BaseEventLoop.create_task_old = asyncio.base_events.BaseEventLoop.create_task
     asyncio.base_events.BaseEventLoop.create_task = decorate_base_event_loop_create_task_routine
+
+
+def monkey_patch_aiohttp_client_session_request():
+    old_client_session_request = aiohttp.client.ClientSession._request
+
+    def decorate_client_session_request(*args, **kwargs):
+        headers = kwargs.get('headers') or dict()
+        headers[X_REQUEST_ID] = SharedContext.get(X_REQUEST_ID)
+        kwargs['headers'] = headers
+        return (yield from old_client_session_request(*args, **kwargs))
+
+    aiohttp.client.ClientSession._request = decorate_client_session_request
