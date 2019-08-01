@@ -2,7 +2,7 @@ from functools import wraps, partial
 from again.utils import unique_hex
 from ..utils.stats import Stats, Aggregator
 from ..exceptions import VykedServiceException
-from ..utils.common_utils import json_file_to_dict, valid_timeout
+from ..utils.common_utils import valid_timeout, X_REQUEST_ID, get_uuid
 import asyncio
 import logging
 import socket
@@ -11,6 +11,7 @@ import time
 import traceback
 import json
 from ..config import CONFIG
+from ..shared_context import SharedContext
 _tcp_timeout = CONFIG.TCP_TIMEOUT
 
 
@@ -143,6 +144,8 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             api_timeout = timeout
 
         Stats.tcp_stats['total_requests'] += 1
+        tracking_id = kwargs.pop(X_REQUEST_ID , None) or get_uuid()
+        SharedContext.set(X_REQUEST_ID, tracking_id)
 
         try:
             result = yield from asyncio.wait_for(asyncio.shield(wrapped_func(self, **kwargs)), api_timeout)

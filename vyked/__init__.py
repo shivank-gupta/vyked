@@ -12,6 +12,6 @@ from .utils import log  # noqa
 from .exceptions import RequestException, VykedServiceError, VykedServiceException  # noqa
 from .utils.log import setup_logging  # noqa
 from .wrappers import Response, Request  # noqa
-from .shared_context import get as shared_context_get, set as shared_context_set
+from .shared_context import SharedContext
 
 __version__ = '2.4.9'

@@ -1,5 +1,5 @@
 import asyncio
-from .common_utils import SHARED_CONTEXT
+from ..shared_context import SharedContext
 
 def monkey_patch_asyncio_task_factory():
     """
@@ -12,10 +12,10 @@ def monkey_patch_asyncio_task_factory():
         task = self.create_task_old(coro)
         # check current task, if it's not None, set context in new task
         current_task = asyncio.Task.current_task()
-        if current_task is not None and hasattr(current_task, SHARED_CONTEXT):
-            shared_context = getattr(current_task, SHARED_CONTEXT)
+        if current_task is not None and hasattr(current_task, SharedContext.SHARED_CONTEXT):
+            shared_context = getattr(current_task, SharedContext.SHARED_CONTEXT)
             shared_context = shared_context or {}
-            setattr(task, SHARED_CONTEXT, shared_context)
+            setattr(task, SharedContext.SHARED_CONTEXT, shared_context)
         return task
 
     asyncio.base_events.BaseEventLoop.create_task_old = asyncio.base_events.BaseEventLoop.create_task

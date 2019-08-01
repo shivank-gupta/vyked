@@ -1,23 +1,25 @@
 import asyncio
-from .utils.common_utils import SHARED_CONTEXT
 
+class SharedContext:
+    SHARED_CONTEXT = 'X-Shared-Context'
 
-def set(key, value):
-    current_task = asyncio.Task.current_task()
-    if hasattr(current_task, SHARED_CONTEXT):
-        shared_context = getattr(current_task, SHARED_CONTEXT)
-        shared_context[key] = value
-    else:
-        setattr(current_task, SHARED_CONTEXT, {key: value})
+    @classmethod
+    def set(cls, key, value):
+        current_task = asyncio.Task.current_task()
+        if hasattr(current_task, cls.SHARED_CONTEXT):
+            shared_context = getattr(current_task, cls.SHARED_CONTEXT)
+            shared_context[key] = value
+        else:
+            setattr(current_task, cls.SHARED_CONTEXT, {key: value})
 
-    return
+        return
 
+    @classmethod
+    def get(cls, key) -> str:
+        current_task = asyncio.Task.current_task()
 
-def get(key) -> str:
-    current_task = asyncio.Task.current_task()
+        if hasattr(current_task, cls.SHARED_CONTEXT):
+            shared_context = getattr(current_task, cls.SHARED_CONTEXT)
+            return shared_context[key]
 
-    if hasattr(current_task, SHARED_CONTEXT):
-        shared_context = getattr(current_task, SHARED_CONTEXT)
-        return shared_context[key]
-
-    return None
+        return None
