@@ -1,4 +1,4 @@
-from vyked.registry import Registry, Repository
+from hydra.registry import Registry, Repository
 import pytest
 from .factories import ServiceFactory, EndpointFactory
 

@@ -1,9 +1,9 @@
 import aiohttp
 from aiohttp.web import Response
 
-from vyked import HTTPApplicationService, get
+from hydra import HTTPApplicationService, get
 
-from vyked import Bus
+from hydra import Bus
 
 
 REGISTRY_HOST = '127.0.0.1'

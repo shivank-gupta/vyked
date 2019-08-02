@@ -1,5 +1,5 @@
 
-class VykedServiceException(Exception):
+class HydraServiceException(Exception):
 
     """
     To be subclassed by service level exceptions and indicate exceptions that
@@ -9,16 +9,16 @@ class VykedServiceException(Exception):
     """
 
 
-class VykedServiceError(Exception):
+class HydraServiceError(Exception):
 
     """
-    Unlike VykedServiceExceptions these will be counted as errors and must only
+    Unlike HydraServiceExceptions these will be counted as errors and must only
     be used when a service encounters an error it couldn't handle at its level.
     eg: client not found, database disconnected.
     """
 
 
-class VykedException(Exception):
+class HydraException(Exception):
     pass
 
 

@@ -4,7 +4,7 @@ import datetime
 from time import mktime
 
 
-class VykedEncoder(json.JSONEncoder):
+class HydraEncoder(json.JSONEncoder):
 
     """
     json dump encoder class

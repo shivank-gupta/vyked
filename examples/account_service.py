@@ -1,4 +1,4 @@
-from vyked import Host, TCPService, TCPServiceClient, api, publish, request, subscribe
+from hydra import Host, TCPService, TCPServiceClient, api, publish, request, subscribe
 import asyncio
 
 REGISTRY_HOST = '127.0.0.1'

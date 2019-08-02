@@ -1,10 +1,12 @@
 from unittest import TestCase
 
-from vyked import TCPService
+from Hydra import TCPService
+
 
 class TestService(TCPService):
     def __init__(self, port):
         super().__init__('TestService', 1, host_port=port)
+
 
 class ServiceTests(TestCase):
 

@@ -35,11 +35,11 @@ def lines(name):
 install_reqs = parse_requirements("./requirements/base.txt", session=PipSession())
 install_requires = [str(ir.req) for ir in install_reqs]
 
-with open('vyked/__init__.py', 'rb') as i:
+with open('hydra/__init__.py', 'rb') as i:
     version = str(ast.literal_eval(re.compile(r'__version__\s+=\s+(.*)').search(i.read().decode('utf-8')).group(1)))
 
 setup(
-    name='vyked',
+    name='hydra',
     version=version,
     author='1mg',
     author_email='devops@1mg.com',

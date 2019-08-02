@@ -1,6 +1,6 @@
 from unittest import mock
-# from vyked.registry import Registry, Repository
-# from vyked.packet import ControlPacket
+# from hydra.registry import Registry, Repository
+# from hydra.packet import ControlPacket
 import uuid
 
 

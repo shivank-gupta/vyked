@@ -111,28 +111,28 @@ DEFAULT_CONFIG_YAML = """
             class: logging.FileHandler
             level: INFO
             formatter: cjf
-            filename: logs/vyked_stats.log
+            filename: logs/hydra_stats.log
 
         exceptions:
             class: logging.FileHandler
             level: INFO
             formatter: cjf
-            filename: logs/vyked_exceptions.log
+            filename: logs/hydra_exceptions.log
 
         service:
             class: logging.FileHandler
             level: INFO
             formatter: ctf
-            filename: logs/vyked_service.log
+            filename: logs/hydra_service.log
 
     formatters:
         ctf:
-            (): vyked.utils.log.CustomTimeLoggingFormatter
+            (): hydra.utils.log.CustomTimeLoggingFormatter
             format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
             datefmt: '%Y-%m-%d %H:%M:%S,%f'
 
         cjf:
-            (): vyked.utils.log.CustomJsonFormatter
+            (): hydra.utils.log.CustomJsonFormatter
             format: '{ "timestamp":"%(asctime)s", "message":"%(message)s"}'
             datefmt: '%Y-%m-%d %H:%M:%S,%f'
 

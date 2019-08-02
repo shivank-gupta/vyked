@@ -2,7 +2,7 @@ import asyncio
 import logging
 from aiohttp import web
 from .utils.log import setup_logging, LogFormatHelper
-from vyked.utils.stats import Stats, Aggregator
+from hydra.utils.stats import Stats, Aggregator
 from .utils.client_stats import ClientStats
 from .utils.common_utils import ServiceAttribute
 from .handler import ApplicationRequestHandler
@@ -25,7 +25,7 @@ class Host:
     def _set_process_name(cls):
         from setproctitle import setproctitle
 
-        setproctitle('{}_{}_{}'.format('vyked', cls.name, cls._host_id))
+        setproctitle('{}_{}_{}'.format('hydra', cls.name, cls._host_id))
 
     @classmethod
     def _stop(cls, signame: str):

@@ -1,6 +1,6 @@
 from asyncio import wait_for, TimeoutError, shield
 from functools import wraps
-from ..exceptions import VykedServiceException
+from ..exceptions import HydraServiceException
 from ..utils.stats import Stats, Aggregator
 from ..utils.common_utils import valid_timeout, ServiceAttribute
 import logging
@@ -56,7 +56,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                     logging.getLogger('stats').info(timeout_log)
                     raise e
 
-                except VykedServiceException as e:
+                except HydraServiceException as e:
                     Stats.http_stats['total_responses'] += 1
                     status = 'handled_exception'
                     _logger.info('Handled exception %s for method %s ', e.__class__.__name__, func.__name__)

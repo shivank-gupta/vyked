@@ -1,7 +1,7 @@
 from aiohttp.web import Response
 
-from vyked import HTTPServiceClient, HTTPApplicationService, Bus
-from vyked import get
+from hydra import HTTPServiceClient, HTTPApplicationService, Bus
+from hydra import get
 
 
 class Hello(HTTPServiceClient):
