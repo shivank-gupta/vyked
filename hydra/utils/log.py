@@ -172,3 +172,40 @@ def setup_logging(_):
     if http_pings_logs_disabled:
         for handler in logging.root.handlers:
             handler.addFilter(http_ping_filter)
+
+
+def log(fn=None, logger=logging.getLogger(), debug_level=logging.DEBUG):
+    """
+    logs parameters and result - takes no arguments
+    """
+    if fn is None:
+        return partial(log, logger=logger, debug_level=debug_level)
+
+    @wraps(fn)
+    def func(*args, **kwargs):
+        arg_string = ""
+        for i in range(0, len(args)):
+            var_name = fn.__code__.co_varnames[i]
+            if var_name not in ['self', 'cls']:
+                arg_string += var_name + ":" + str(args[i]) + ","
+        arg_string = arg_string[0:len(arg_string) - 1]
+        string = (RED + BOLD + '>> ' + END + 'Calling {0}({1})'.format(fn.__name__, arg_string))
+        if len(kwargs):
+            string = (
+                RED + BOLD + '>> ' + END + 'Calling {0} with args {1} and kwargs {2}'.format(fn.__name__, arg_string,
+                                                                                             kwargs))
+        logger.log(debug_level, string)
+        wrapped_fn = fn
+        if not asyncio.iscoroutine(fn):
+            wrapped_fn = asyncio.coroutine(fn)
+        try:
+            result = yield from wrapped_fn(*args, **kwargs)
+            string = BLUE + BOLD + '<< ' + END + 'Return {0} with result :{1}'.format(fn.__name__, result)
+            logger.log(debug_level, string)
+            return result
+        except Exception as e:
+            string = (RED + BOLD + '>> ' + END + '{0} raised exception :{1}'.format(fn.__name__, str(e)))
+            logger.log(debug_level, string)
+            raise e
+
+    return func
