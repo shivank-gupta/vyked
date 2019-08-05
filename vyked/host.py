@@ -54,9 +54,7 @@ class Host:
     @classmethod
     def run(cls):
         if cls._tcp_service or cls._http_service:
-            monkey_patch_asyncio_task_factory()
-            monkey_patch_aiohttp_client_session_request()
-            monkey_patch_aiohttp_response_init()
+            cls.monkey_patch()
             cls._set_host_id()
             cls._setup_logging()
 
@@ -65,6 +63,13 @@ class Host:
             cls._start_server()
         else:
             cls._logger.error('No services to host')
+
+
+    @classmethod
+    def monkey_patch(cls):
+        monkey_patch_asyncio_task_factory()
+        monkey_patch_aiohttp_client_session_request()
+        monkey_patch_aiohttp_response_init()
 
     @classmethod
     def _set_signal_handlers(cls):
