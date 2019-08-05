@@ -5,8 +5,8 @@ import signal
 import os
 
 from aiohttp.web import Application
-from .utils.monkey_patch import monkey_patch_asyncio_task_factory, monkey_patch_aiohttp_client_session_request
-
+from .utils.monkey_patch import monkey_patch_asyncio_task_factory, monkey_patch_aiohttp_client_session_request, \
+    monkey_patch_aiohttp_response_init
 from .bus import TCPBus, PubSubBus
 from vyked.registry_client import RegistryClient
 from vyked.services import HTTPService, TCPService
@@ -56,6 +56,7 @@ class Host:
         if cls._tcp_service or cls._http_service:
             monkey_patch_asyncio_task_factory()
             monkey_patch_aiohttp_client_session_request()
+            monkey_patch_aiohttp_response_init()
             cls._set_host_id()
             cls._setup_logging()
 
