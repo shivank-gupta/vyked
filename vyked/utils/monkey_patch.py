@@ -28,15 +28,17 @@ def monkey_patch_asyncio_task_factory():
 
 
 def monkey_patch_aiohttp_client_session_request():
+
     old_client_session_request = aiohttp.client.ClientSession._request
 
-    def decorate_client_session_request(*args, **kwargs):
+    def decorate_client_session_request(self, *args, **kwargs):
         headers = kwargs.get('headers') or dict()
         headers[X_REQUEST_ID] = SharedContext.get(X_REQUEST_ID)
         kwargs['headers'] = headers
-        return (yield from old_client_session_request(*args, **kwargs))
+        return (yield from old_client_session_request(self, *args, **kwargs))
 
     aiohttp.client.ClientSession._request = decorate_client_session_request
+
 
 def monkey_patch_aiohttp_response_init():
     old_init = Response.__init__
