@@ -5,7 +5,9 @@ class SharedContext:
 
     @classmethod
     def set(cls, key, value):
+        key = cls.transform_key(key)
         current_task = asyncio.Task.current_task()
+
         if hasattr(current_task, cls.SHARED_CONTEXT):
             shared_context = getattr(current_task, cls.SHARED_CONTEXT)
             shared_context[key] = value
@@ -16,6 +18,7 @@ class SharedContext:
 
     @classmethod
     def get(cls, key) -> str:
+        key = cls.transform_key(key)
         current_task = asyncio.Task.current_task()
 
         if hasattr(current_task, cls.SHARED_CONTEXT):
@@ -23,3 +26,7 @@ class SharedContext:
             return shared_context.get(key)
 
         return None
+
+    @classmethod
+    def transform_key(cls, key):
+        return key.lower()
