@@ -1,5 +1,7 @@
 import json
 
+X_REQUEST_ID = 'X-REQUEST-ID'
+
 def json_file_to_dict(_file: str) -> dict:
     """
     convert json file data to dict
