@@ -4,7 +4,7 @@ from vyked import HTTPServiceClient, HTTPService
 from ..exceptions import VykedServiceException
 from aiohttp.web import Response
 from ..utils.stats import Stats, Aggregator
-from ..utils.common_utils import json_file_to_dict, valid_timeout, X_REQUEST_ID
+from ..utils.common_utils import json_file_to_dict, valid_timeout
 import logging
 import setproctitle
 import socket
@@ -12,7 +12,6 @@ import json
 import time
 import traceback
 from ..config import CONFIG
-from ..shared_context import SharedContext
 _http_timeout = CONFIG.HTTP_TIMEOUT
 
 def make_request(func, self, args, kwargs, method):
@@ -75,7 +74,6 @@ def get_decorated_fun(method, path, required_params, timeout):
                 if not iscoroutine(func):
                     wrapped_func = coroutine(func)
 
-                tracking_id = SharedContext.get(X_REQUEST_ID)
 
                 try:
                     result = yield from wait_for(shield(wrapped_func(self, *args, **kwargs)), api_timeout)
@@ -92,8 +90,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'service_name': self._service_name,
                         'endpoint': func.__name__,
                         'api_execution_threshold_exceed': True,
-                        'api_timeout': True,
-                        X_REQUEST_ID: tracking_id
+                        'api_timeout': True
                     }
 
                     logging.getLogger('stats').info(timeout_log)
@@ -112,8 +109,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                     _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
                     _stats_logger = logging.getLogger('stats')
                     d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
-                         "service_name": self._service_name, "hostname": socket.gethostbyname(socket.gethostname()),
-                         X_REQUEST_ID: tracking_id}
+                         "service_name": self._service_name, "hostname": socket.gethostbyname(socket.gethostname())}
                     _stats_logger.info(dict(d))
                     _exception_logger = logging.getLogger('exceptions')
                     d["message"] = traceback.format_exc()
@@ -135,8 +131,7 @@ def get_decorated_fun(method, path, required_params, timeout):
                         'hostname': hostname,
                         'service_name': service_name,
                         'endpoint': func.__name__,
-                        'api_execution_threshold_exceed': False,
-                        X_REQUEST_ID: tracking_id
+                        'api_execution_threshold_exceed': False
                     }
 
                     method_execution_time = (t2 - t1)
