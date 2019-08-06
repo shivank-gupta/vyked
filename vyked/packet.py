@@ -1,7 +1,5 @@
 from collections import defaultdict
 from uuid import uuid4
-from .utils.common_utils import X_REQUEST_ID
-from .shared_context import SharedContext
 
 
 class _Packet:
@@ -156,7 +154,6 @@ class MessagePacket(_Packet):
 
     @classmethod
     def request(cls, name, version, app_name, packet_type, endpoint, params, entity):
-        params[X_REQUEST_ID] = SharedContext.get(X_REQUEST_ID)
         return {'pid': cls._next_pid(),
                 'app': app_name,
                 'service': name,
