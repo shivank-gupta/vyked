@@ -2,7 +2,7 @@ from functools import wraps, partial
 from again.utils import unique_hex
 from ..utils.stats import Stats, Aggregator
 from ..exceptions import VykedServiceException
-from ..utils.common_utils import valid_timeout, X_REQUEST_ID
+from ..utils.common_utils import valid_timeout, X_REQUEST_ID, get_uuid
 import asyncio
 import logging
 import socket
@@ -11,6 +11,7 @@ import time
 import traceback
 import json
 from ..config import CONFIG
+from ..shared_context import SharedContext
 _tcp_timeout = CONFIG.TCP_TIMEOUT
 
 
@@ -143,7 +144,8 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             api_timeout = timeout
 
         Stats.tcp_stats['total_requests'] += 1
-        tracking_id = kwargs.pop(X_REQUEST_ID, None)
+        tracking_id = kwargs.pop(X_REQUEST_ID , None) or get_uuid()
+        SharedContext.set(X_REQUEST_ID, tracking_id)
 
         try:
             result = yield from asyncio.wait_for(asyncio.shield(wrapped_func(self, **kwargs)), api_timeout)
@@ -154,13 +156,13 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             status = 'timeout'
             success = False
             failed = True
-            logging.exception("TCP request had a timeout for method %s", func.__name__)
+            logging.exception("%s TCP request had a timeout for method %s", tracking_id, func.__name__)
 
         except VykedServiceException as e:
             Stats.tcp_stats['total_responses'] += 1
             error = str(e)
             status = 'handled_error'
-            _logger.info('Handled exception %s for method %s ', e.__class__.__name__, func.__name__)
+            _logger.info('%s Handled exception %s for method %s ', tracking_id, e.__class__.__name__, func.__name__)
 
         except Exception as e:
             Stats.tcp_stats['total_errors'] += 1
@@ -168,12 +170,12 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             status = 'unhandled_error'
             success = False
             failed = True
-            _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
+            _logger.exception('%s Unhandled exception %s for method %s ', tracking_id, e.__class__.__name__, func.__name__)
             _stats_logger = logging.getLogger('stats')
             _method_param = json.dumps(kwargs)
             d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
                  "method_param": _method_param, "service_name": self._service_name,
-                 "hostname": socket.gethostbyname(socket.gethostname())}
+                 "hostname": socket.gethostbyname(socket.gethostname()), X_REQUEST_ID: tracking_id}
             _stats_logger.info(dict(d))
             _exception_logger = logging.getLogger('exceptions')
             d["message"] = traceback.format_exc()
@@ -194,7 +196,8 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             'hostname': hostname,
             'service_name': service_name,
             'endpoint': func.__name__,
-            'api_execution_threshold_exceed': False
+            'api_execution_threshold_exceed': False,
+            X_REQUEST_ID: tracking_id
         }
 
         method_execution_time = (end_time - start_time)
@@ -205,8 +208,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
         else:
             logging.getLogger('stats').debug(logd)
 
-        _logger.debug('Time taken for %s is %d milliseconds', func.__name__, end_time - start_time)
-        _logger.debug('Timeout for %s is %s seconds', func.__name__, api_timeout)
+        logging.getLogger('tcp').info('%s %d %s', func.__name__, end_time - start_time, tracking_id)
 
         # call to update aggregator, designed to replace the stats module.
         Aggregator.update_stats(endpoint=func.__name__, status=status, success=success,
