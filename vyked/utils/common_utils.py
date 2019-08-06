@@ -1,4 +1,7 @@
 import json
+import uuid
+
+X_REQUEST_ID = 'X-REQUEST-ID'
 
 def json_file_to_dict(_file: str) -> dict:
     """
@@ -20,3 +23,7 @@ def json_file_to_dict(_file: str) -> dict:
 
 def valid_timeout(timeout):
     return True if isinstance(timeout, (int, float)) and timeout > 0 and timeout <= 600 else False
+
+
+def get_uuid():
+    return str(uuid.uuid4())
