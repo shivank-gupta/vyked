@@ -156,13 +156,13 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             status = 'timeout'
             success = False
             failed = True
-            logging.exception("TCP request had a timeout for method %s", func.__name__)
+            logging.exception("%s TCP request had a timeout for method %s", tracking_id, func.__name__)
 
         except VykedServiceException as e:
             Stats.tcp_stats['total_responses'] += 1
             error = str(e)
             status = 'handled_error'
-            _logger.info('Handled exception %s for method %s ', e.__class__.__name__, func.__name__)
+            _logger.info('%s Handled exception %s for method %s ', tracking_id, e.__class__.__name__, func.__name__)
 
         except Exception as e:
             Stats.tcp_stats['total_errors'] += 1
@@ -170,7 +170,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
             status = 'unhandled_error'
             success = False
             failed = True
-            _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
+            _logger.exception('%s Unhandled exception %s for method %s ', tracking_id, e.__class__.__name__, func.__name__)
             _stats_logger = logging.getLogger('stats')
             _method_param = json.dumps(kwargs)
             d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
@@ -208,8 +208,7 @@ def _get_api_decorator(func=None, old_api=None, replacement_api=None, timeout=No
         else:
             logging.getLogger('stats').debug(logd)
 
-        _logger.debug('Time taken for %s is %d milliseconds', func.__name__, end_time - start_time)
-        _logger.debug('Timeout for %s is %s seconds', func.__name__, api_timeout)
+        logging.getLogger('tcp').info('%s %d %s', func.__name__, end_time - start_time, tracking_id)
 
         # call to update aggregator, designed to replace the stats module.
         Aggregator.update_stats(endpoint=func.__name__, status=status, success=success,
