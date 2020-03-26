@@ -15,4 +15,4 @@ from .wrappers import Response, Request  # noqa
 from .shared_context import SharedContext
 
 
-__version__ = '3.0.2'
+__version__ = '3.1.0'
