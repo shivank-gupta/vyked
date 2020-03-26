@@ -24,7 +24,7 @@ def make_request(func, self, args, kwargs, method):
     return response
 
 
-def get_decorated_fun(method, path, required_params, timeout):
+def get_decorated_fun(method, path, required_params, timeout, suppressed_errors):
     def decorator(func):
         @wraps(func)
         def f(self, *args, **kwargs):
@@ -106,6 +106,8 @@ def get_decorated_fun(method, path, required_params, timeout):
                     raise e
 
                 except Exception as e:
+                    if suppressed_errors and e.__class__.__name__ in suppressed_errors:
+                        return {}
                     Stats.http_stats['total_errors'] += 1
                     status = 'unhandled_exception'
                     success = False
@@ -167,36 +169,36 @@ def get_decorated_fun(method, path, required_params, timeout):
     return decorator
 
 
-def get(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('get', get_path(path, is_internal), required_params, timeout)
+def get(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('get', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def head(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('head', get_path(path, is_internal), required_params, timeout)
+def head(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('head', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def options(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('options', get_path(path, is_internal), required_params, timeout)
+def options(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('options', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def patch(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('patch', get_path(path, is_internal), required_params, timeout)
+def patch(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('patch', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def post(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('post', get_path(path, is_internal), required_params, timeout)
+def post(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('post', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def put(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('put', get_path(path, is_internal), required_params, timeout)
+def put(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('put', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def trace(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('put', get_path(path, is_internal), required_params, timeout)
+def trace(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('put', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
-def delete(path=None, required_params=None, timeout=None, is_internal=False):
-    return get_decorated_fun('delete', get_path(path, is_internal), required_params, timeout)
+def delete(path=None, required_params=None, timeout=None, is_internal=False, suppressed_errors=None):
+    return get_decorated_fun('delete', get_path(path, is_internal), required_params, timeout, suppressed_errors)
 
 
 def get_path(path, is_internal=False):
