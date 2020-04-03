@@ -106,13 +106,13 @@ def get_decorated_fun(method, path, required_params, timeout, suppressed_errors)
                     raise e
 
                 except Exception as e:
+                    status = 'unhandled_exception'
+                    success = False
                     if suppressed_errors:
                         for _error in suppressed_errors:
                             if isinstance(e, _error):
                                 raise e
                     Stats.http_stats['total_errors'] += 1
-                    status = 'unhandled_exception'
-                    success = False
                     _logger.exception('Unhandled exception %s for method %s ', e.__class__.__name__, func.__name__)
                     _stats_logger = logging.getLogger('stats')
                     d = {"exception_type": e.__class__.__name__, "method_name": func.__name__, "message": str(e),
