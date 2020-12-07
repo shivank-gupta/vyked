@@ -34,7 +34,9 @@ Getting Started
 
 Add localhost
 ^^^^^^^^^^^^^^^^
+
  .. code-block:: bash
+
     $ echo 127.0.0.1 $HOSTNAME > /etc/hosts
 
 Service Registry
@@ -64,16 +66,19 @@ Usefull Commands
 * Use below command to list all the available commands
 
 .. code-block:: bash
+
     $ make help
 
 * Use below command to create log file
 
 .. code-block:: bash
+
     $ make create-logs
 
 * Use below command to run vyked.registry
 
 .. code-block:: bash
+
     $ make run
 
 Service
