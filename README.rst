@@ -32,6 +32,11 @@ generates SAX-like events using the yajl C library. To install yajl:
 Getting Started
 ---------------
 
+Add localhost
+^^^^^^^^^^^^^^^^
+ .. code-block:: bash
+    $ echo 127.0.0.1 $HOSTNAME > /etc/hosts
+
 Service Registry
 ^^^^^^^^^^^^^^^^
 When Vyked services start they register with the service registry by advertising their name, ip,port and the names of other Vyked services they might require to function. The registry then co-ordinates all Vyked services and even balances loads across multiple instances of each service.
@@ -52,6 +57,24 @@ or :
     
     registry = Registry('127.0.0.1', 4500)
     registry.start()
+
+Usefull Commands
+^^^^^^^^^^^^^^^^
+
+* Use below command to list all the available commands
+
+.. code-block:: bash
+    $ make help
+
+* Use below command to create log file
+
+.. code-block:: bash
+    $ make create-logs
+
+* Use below command to run vyked.registry
+
+.. code-block:: bash
+    $ make run
 
 Service
 ^^^^^^^
