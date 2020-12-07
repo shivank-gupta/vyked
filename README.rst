@@ -60,7 +60,7 @@ or :
     registry = Registry('127.0.0.1', 4500)
     registry.start()
 
-Usefull Commands
+Useful Commands
 ^^^^^^^^^^^^^^^^
 
 * Use below command to list all the available commands
