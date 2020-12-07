@@ -7,3 +7,4 @@ create-logs: ## Run to create log files for vyked
 
 run: ## Run vyked
 	python3 -m vyked.registry
+
